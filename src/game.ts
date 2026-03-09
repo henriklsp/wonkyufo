@@ -27,6 +27,7 @@ export class Game {
   private lastTime: number | null = null;
   private score = 0;
   private scoreTimer = 0;
+  private launchGrace = 0;  // seconds remaining in the post-launch input blackout
   private stars: Star[] = [];
 
   // Sets up all long-lived objects and attaches input listeners. Stars are
@@ -86,6 +87,7 @@ export class Game {
     this.safeZone.reset();
     this.score = 0;
     this.scoreTimer = 0;
+    this.launchGrace = 0.2;
   }
 
   // Core animation loop. lastTime starts null so the first frame produces dt=0,
@@ -116,7 +118,8 @@ export class Game {
 
     if (this.state !== 'playing') return;
 
-    this.ufo.update(dt, this.spaceHeld);
+    this.launchGrace = Math.max(0, this.launchGrace - dt);
+    this.ufo.update(dt, this.launchGrace > 0 ? false : this.spaceHeld);
     this.safeZone.update(dt);
 
     const newAsteroids = this.spawner.update(dt, this.safeZone);

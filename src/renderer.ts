@@ -1,7 +1,16 @@
-import { UFO } from './ufo';
+import { UFO, D_POS, D_ACCEL, D_JERK, D_SNAP, D_CRACKLE, D_POP } from './ufo';
 import { Asteroid } from './asteroid';
 import { SafeZone } from './safezone';
-import { CANVAS_WIDTH, CANVAS_HEIGHT, MAX_ENGINE_ACCEL, MIN_JERK, MAX_JERK } from './constants';
+import {
+  CANVAS_WIDTH, CANVAS_HEIGHT,
+  MAX_ENGINE_ACCEL, ACCEL_EXHAUST_MIN, EXHAUST_Y_OFFSET,
+  MIN_JERK, MAX_JERK, JERK_FLICKER_MAX, JERK_FLICKER_MIN, JERK_PULSE_MIN,
+  MIN_SNAP, MAX_SNAP, ENGINE_GLOW_Y,
+  MIN_CRACKLE, MAX_CRACKLE, CRACKLE_FLICKER_MAX, CRACKLE_FLICKER_MIN, CRACKLE_PULSE_MIN, CRACKLE_FREQUENCY,
+  STAR_ALPHA_BASE, STAR_ALPHA_SCALE,
+  RIM_LIGHT_Y_FRACTION, RIM_LIGHT_RADIUS_FRACTION, RIM_LIGHT_X_SPREAD,
+  RIM_LIGHT_X_OFFSETS, RIM_LIGHT_VALUE_MIN,
+} from './constants';
 
 export interface Star {
   x: number;
@@ -21,6 +30,21 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+// Converts HSV (h: 0–360, s: 0–1, v: 0–1) to a CSS rgb() string.
+function hsvToRgb(h: number, s: number, v: number): string {
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  let r = 0, g = 0, b = 0;
+  if      (h < 60)  { r = c; g = x; b = 0; }
+  else if (h < 120) { r = x; g = c; b = 0; }
+  else if (h < 180) { r = 0; g = c; b = x; }
+  else if (h < 240) { r = 0; g = x; b = c; }
+  else if (h < 300) { r = x; g = 0; b = c; }
+  else              { r = c; g = 0; b = x; }
+  return `rgb(${Math.round((r + m) * 255)},${Math.round((g + m) * 255)},${Math.round((b + m) * 255)})`;
+}
+
 // Renderer centralises every canvas draw call, keeping game logic files free
 // of rendering concerns. It holds the loaded image assets and exposes one
 // focused method per visual element. Separating rendering here also makes it
@@ -29,20 +53,35 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private ufoImage: HTMLImageElement | null = null;
-  private asteroidImage: HTMLImageElement | null = null;
+  private asteroidImages: (HTMLImageElement | null)[] = [null, null];
   private exhaustImage: HTMLImageElement | null = null;
+  private exhaustLowImage: HTMLImageElement | null = null;
+  private engineGlowImage: HTMLImageElement | null = null;
+  private time: number = 0;
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
   }
 
-  // Fetches all sprite assets in parallel. Must resolve before the game loop
-  // starts so drawUfo and drawAsteroid always have images ready to paint.
+  // Advances the internal clock used for exhaust flicker/pulse animations.
+  // Called every frame so effects run on title and dead screens too.
+  tick(dt: number): void {
+    this.time += dt;
+  }
+
+  // Fetches all sprite assets. Each image is loaded independently so a single
+  // missing file does not prevent the others from loading.
   async loadAssets(): Promise<void> {
-    [this.ufoImage, this.asteroidImage, this.exhaustImage] = await Promise.all([
-      loadImage('/assets/ufo.png'),
-      loadImage('/assets/asteroid.png'),
-      loadImage('/assets/exhaust.png'),
+    const tryLoad = (src: string) => loadImage(src).catch(() => null);
+    [this.ufoImage, this.asteroidImages[0], this.asteroidImages[1], this.exhaustImage, this.exhaustLowImage, this.engineGlowImage] = await Promise.all([
+      tryLoad('/assets/ufo.png'),
+      tryLoad('/assets/asteroid1.png'),
+      tryLoad('/assets/asteroid2.png'),
+      tryLoad('/assets/exhaust.png'),
+      tryLoad('/assets/exhaustlow.png'),
+      tryLoad('/assets/engineglow.png'),
     ]);
   }
 
@@ -60,7 +99,7 @@ export class Renderer {
     const ctx = this.ctx;
     ctx.fillStyle = '#fff';
     for (const star of stars) {
-      ctx.globalAlpha = 0.4 + star.r * 0.4;
+      ctx.globalAlpha = STAR_ALPHA_BASE + star.r * STAR_ALPHA_SCALE;
       ctx.beginPath();
       ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
       ctx.fill();
@@ -75,22 +114,74 @@ export class Renderer {
   // current thrust level to give real-time feedback on how much acceleration
   // has built up.
   drawUfo(ufo: UFO): void {
-    const { x, y, radius: r, engineAccel } = ufo;
+    const { x, radius: r } = ufo;
+    const y = ufo.d[D_POS];
     const ctx = this.ctx;
 
     // Exhaust is drawn before the UFO sprite so it appears behind the hull.
-    // Height scales linearly with engineAccel so the flame visually represents
-    // current thrust output. Alpha follows the same ratio, fading to fully
-    // transparent at zero so there is no visible exhaust when the engine is off.
-    // Width is fixed at the UFO diameter so the flame always fits the hull width.
-    if (this.exhaustImage) {
-      const t = engineAccel / MAX_ENGINE_ACCEL;
-      const exhaustHeight = Math.max(1, t * r * 2);
-      const exhaustAlpha = t * 0.5;
+    // Height encodes acceleration. Image and alpha encode jerk:
+    //   Non-negative jerk → exhaust image; negative jerk → exhaustlow image.
+    //   Positive jerk     → binary square-wave alpha (fully on or off).
+    //   Zero/negative jerk→ smooth sine-wave alpha (0..1 continuously).
+    // Frequency is piecewise-linear: JERK_PULSE_MIN at MIN_JERK, rising to
+    // JERK_FLICKER_MIN at zero, then to JERK_FLICKER_MAX at MAX_JERK.
+    {
+      const accelT = ufo.d[D_ACCEL] / MAX_ENGINE_ACCEL;
+      const exhaustHeight = ACCEL_EXHAUST_MIN + accelT * (r * 2 - ACCEL_EXHAUST_MIN);
+      const img = ufo.d[D_JERK] >= 0 ? this.exhaustImage : this.exhaustLowImage;
+      let rate: number;
+      if (ufo.d[D_JERK] >= 0) {
+        const t = ufo.d[D_JERK] / MAX_JERK; // 0..1
+        rate = JERK_FLICKER_MIN + (JERK_FLICKER_MAX - JERK_FLICKER_MIN) * t;
+      } else {
+        const t = ufo.d[D_JERK] / MIN_JERK; // 0..1 as jerk approaches MIN_JERK
+        rate = JERK_FLICKER_MIN - (JERK_FLICKER_MIN - JERK_PULSE_MIN) * t;
+      }
+      const wave = Math.sin(2 * Math.PI * rate * this.time);
+      const alpha = ufo.d[D_JERK] > 0 ? (wave >= 0 ? 1 : 0) : 0.5 + 0.5 * wave;
+      if (img) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(img, x - r, y + r - EXHAUST_Y_OFFSET, r * 2, exhaustHeight);
+        ctx.restore();
+      }
+    }
+
+    // Engine glow: same size as UFO image, positioned so 5 px overlaps UFO bottom.
+    // Snap sets base alpha (0 at snap≤0, linear to 1 at MAX_SNAP).
+    // When crackle is positive, each cycle flashes full-on then full-off briefly
+    // before returning to the snap alpha, giving a crackling build-up effect.
+    {
+      const snapAlpha = ufo.d[D_SNAP] <= 0 ? 0 : ufo.d[D_SNAP] / MAX_SNAP;
+      let glowAlpha: number;
+      if (ufo.d[D_CRACKLE] > 0) {
+        const period = 1 / CRACKLE_FREQUENCY;
+        const phase = this.time % period;
+        if (phase < period * 0.1) {
+          glowAlpha = 1;
+        } else if (phase < period * 0.2) {
+          glowAlpha = 0;
+        } else {
+          glowAlpha = snapAlpha;
+        }
+      } else {
+        glowAlpha = snapAlpha;
+      }
+      const glowTop = (y - r) - ENGINE_GLOW_Y;
       ctx.save();
-      ctx.globalAlpha = exhaustAlpha;
-      // Anchor the wide top edge of the exhaust to the bottom of the UFO circle.
-      ctx.drawImage(this.exhaustImage, x - r, y + r, r * 2, exhaustHeight);
+      ctx.globalAlpha = glowAlpha;
+      if (this.engineGlowImage) {
+        ctx.drawImage(this.engineGlowImage, x - r, glowTop, r * 2, r * 2);
+      } else {
+        const glowCenterY = glowTop + r;
+        const grad = ctx.createRadialGradient(x, glowCenterY, 0, x, glowCenterY, r);
+        grad.addColorStop(0, 'rgba(80,180,255,1)');
+        grad.addColorStop(1, 'rgba(80,180,255,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x, glowCenterY, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -105,17 +196,19 @@ export class Renderer {
       ctx.fill();
     }
 
-    // Rim lights sit on the disc edge and show the current jerk level — black
-    // when thrust is fully released (jerk at its negative floor) through gray
-    // to white when jerk is fully wound up. This gives the player a direct
-    // read on how much more thrust headroom they have before hitting MAX_JERK.
-    const t = (ufo.jerk - MIN_JERK) / (MAX_JERK - MIN_JERK);
-    const v = Math.round(Math.max(0, Math.min(1, t)) * 255);
-    const lightColor = `rgb(${v},${v},${v})`;
-    const lightOffsets = [-0.65, 0, 0.65];
-    for (const lx of lightOffsets) {
+    // Rim lights encode the pop/crackle state via HSV colour:
+    //   Hue   — green while space winds crackle up, red while it winds down, blue at limits.
+    //   Value — scales with crackle (0.5 at MIN_CRACKLE → 1.0 at MAX_CRACKLE).
+    //   Sat   — always maximum.
+    const hue = (ufo.d[D_POP] > 0) ? 120   // green: winding up
+              : (ufo.d[D_POP] < 0) ? 0     // red:   winding down
+              : 240;                         // blue:  pop effectively zero, at limit
+    const crackleT = (ufo.d[D_CRACKLE] - MIN_CRACKLE) / (MAX_CRACKLE - MIN_CRACKLE);
+    const val = RIM_LIGHT_VALUE_MIN + (1 - RIM_LIGHT_VALUE_MIN) * crackleT;
+    const lightColor = hsvToRgb(hue, 1, val);
+    for (const lx of RIM_LIGHT_X_OFFSETS) {
       ctx.beginPath();
-      ctx.arc(x + lx * r * 0.85, y + r * 0.22, r * 0.07, 0, Math.PI * 2);
+      ctx.arc(x + lx * r * RIM_LIGHT_X_SPREAD, y + r * RIM_LIGHT_Y_FRACTION, r * RIM_LIGHT_RADIUS_FRACTION, 0, Math.PI * 2);
       ctx.fillStyle = lightColor;
       ctx.fill();
     }
@@ -130,11 +223,12 @@ export class Renderer {
     const ctx = this.ctx;
     const size = r * 2;
 
-    if (this.asteroidImage) {
+    const asteroidImage = this.asteroidImages[asteroid.imageIndex];
+    if (asteroidImage) {
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(rotation);
-      ctx.drawImage(this.asteroidImage, -r, -r, size, size);
+      ctx.drawImage(asteroidImage, -r, -r, size, size);
       ctx.restore();
     } else {
       // Fallback drawn if assets haven't loaded yet.
@@ -179,7 +273,7 @@ export class Renderer {
     // Construct a minimal stand-in UFO just to supply the position and radius
     // that drawUfo needs. Its physics state is irrelevant here.
     const demoUfo = new UFO();
-    demoUfo.y = cy - 110;
+    demoUfo.d[D_POS] = cy - 110;
     this.drawUfo(demoUfo);
 
     ctx.textAlign = 'center';
@@ -198,7 +292,7 @@ export class Renderer {
 
     ctx.font = '13px monospace';
     ctx.fillStyle = '#467';
-    ctx.fillText('Hold SPACE to thrust  ·  Avoid asteroids', cx, cy + 58);
+    ctx.fillText('Hold SPACE to pop thruster acceleration', cx, cy + 58);
   }
 
   // The dead screen keeps the final game frame visible underneath a

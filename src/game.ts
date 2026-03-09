@@ -1,9 +1,13 @@
-import { UFO } from './ufo';
+import { UFO, D_POS } from './ufo';
 import { Asteroid } from './asteroid';
 import { Spawner } from './spawner';
 import { SafeZone } from './safezone';
 import { Renderer, Star } from './renderer';
-import { CANVAS_WIDTH, CANVAS_HEIGHT, UFO_COLLISION_RADIUS } from './constants';
+import {
+  CANVAS_WIDTH, CANVAS_HEIGHT, UFO_COLLISION_RADIUS,
+  STAR_COUNT, STAR_RADIUS_MIN, STAR_RADIUS_RANGE, STAR_SPEED_MIN, STAR_SPEED_RANGE,
+  SCORE_PER_SECOND, MAX_FRAME_DT,
+} from './constants';
 
 type GameState = 'title' | 'playing' | 'dead';
 
@@ -37,12 +41,12 @@ export class Game {
 
     // Varying radius and speed creates a parallax-like depth effect: small,
     // slow stars read as distant; larger, faster ones as close.
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < STAR_COUNT; i++) {
       this.stars.push({
         x: Math.random() * CANVAS_WIDTH,
         y: Math.random() * CANVAS_HEIGHT,
-        r: Math.random() * 1.4 + 0.2,
-        speed: Math.random() * 25 + 8,
+        r: Math.random() * STAR_RADIUS_RANGE + STAR_RADIUS_MIN,
+        speed: Math.random() * STAR_SPEED_RANGE + STAR_SPEED_MIN,
       });
     }
 
@@ -90,7 +94,7 @@ export class Game {
   // catapult the UFO or spawn a wall of asteroids on resume.
   private loop(timestamp: number) {
     if (this.lastTime === null) this.lastTime = timestamp;
-    const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
+    const dt = Math.min((timestamp - this.lastTime) / 1000, MAX_FRAME_DT);
     this.lastTime = timestamp;
 
     this.update(dt);
@@ -103,6 +107,7 @@ export class Game {
   // else is gated on the playing state — checking early prevents subtle bugs
   // where a collision check runs against stale asteroid positions.
   private update(dt: number) {
+    this.renderer.tick(dt);
     for (const star of this.stars) {
       star.x -= star.speed * dt;
       // Wrap rather than respawn so star density stays constant.
@@ -124,7 +129,7 @@ export class Game {
     // Score is time-survival based: 10 points per second, floored so it
     // reads as whole numbers rather than decimals.
     this.scoreTimer += dt;
-    this.score = Math.floor(this.scoreTimer * 10);
+    this.score = Math.floor(this.scoreTimer * SCORE_PER_SECOND);
 
     // Boundary check before collision so escaping the arena ends the game
     // even if no asteroid was involved.
@@ -137,7 +142,7 @@ export class Game {
     // more forgiving, which suits the fast-paced feel of the game.
     for (const a of this.asteroids) {
       const dx = this.ufo.x - a.x;
-      const dy = this.ufo.y - a.y;
+      const dy = this.ufo.d[D_POS] - a.y;
       if (Math.sqrt(dx * dx + dy * dy) < UFO_COLLISION_RADIUS + a.radius) {
         this.state = 'dead';
         return;
@@ -156,7 +161,6 @@ export class Game {
     } else if (this.state === 'playing') {
       for (const a of this.asteroids) this.renderer.drawAsteroid(a);
       this.renderer.drawUfo(this.ufo);
-      this.renderer.drawSafeZone(this.safeZone);
       this.renderer.drawHud(this.score);
     } else {
       // The dead screen keeps the final game frame visible beneath the overlay

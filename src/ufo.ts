@@ -1,5 +1,4 @@
 import {
-  EASY_MODE,
   GRAVITY,
   MAX_ENGINE_ACCEL,
   MAX_JERK,
@@ -11,6 +10,7 @@ import {
   MIN_CRACKLE,
   MAX_POP,
   MIN_POP,
+  D_CLAMP_SPEED,
   UFO_RADIUS,
   UFO_X_FRACTION,
   CANVAS_WIDTH,
@@ -54,9 +54,9 @@ const MIN_D: number[] = [
 
 // UFO is the player-controlled entity. It moves only vertically — horizontal
 // position is fixed so the challenge is purely about altitude management.
-// In full mode physics are modelled six levels deep (position ← velocity ←
+// Physics are modelled six levels deep (position ← velocity ←
 // acceleration ← jerk ← snap ← crackle ← pop) for a very slow-build thrust
-// feel. EASY_MODE collapses this to four levels by setting snap directly.
+// feel.
 export class UFO {
   x: number;
   d: number[] = [0, 0, 0, 0, 0, 0, 0];
@@ -71,7 +71,7 @@ export class UFO {
   // Resets only the mutable physics state, not position x, because x is
   // structural and never changes between runs.
   reset(): void {
-    this.d = [CANVAS_HEIGHT / 2, 0, MIN_ENGINE_ACCEL, MIN_JERK, MIN_SNAP, MIN_CRACKLE, MIN_POP];
+    this.d = [CANVAS_HEIGHT / 2, 0, 0, 0, 0, 0, 0];
   }
 
   // Returns the effective upper bound for derivative n. For orders above
@@ -89,29 +89,23 @@ export class UFO {
     return this.d[n - 1] > this.getMin(n - 1) ? MIN_D[n] : 0;
   }
 
-  // Advances physics by one frame. In EASY_MODE snap is set directly from
-  // input (4-level chain). Otherwise pop drives crackle drives snap (6-level
-  // chain). From snap downward the chain is identical in both modes.
+  // Advances physics by one frame. Pop drives crackle drives snap drives jerk
+  // drives acceleration (6-level chain).
   update(dt: number, spaceHeld: boolean): void {
     this.spaceHeld = spaceHeld;
 
-    if (EASY_MODE) {
-      this.d[D_SNAP] = spaceHeld ? MAX_SNAP : MIN_SNAP;
-      const atEffMin = this.d[D_SNAP] <= this.getMin(D_SNAP);
-      this.d[D_POP] = (!spaceHeld && atEffMin) ? 0 : (spaceHeld ? MAX_POP : MIN_POP);
-      for (let n = D_JERK; n >= D_ACCEL; n--) {
-        this.d[n] = Math.max(this.getMin(n), Math.min(this.getMax(n), this.d[n] + this.d[n + 1] * dt));
-      }
-    } else {
-      this.d[D_POP] = spaceHeld ? MAX_POP : MIN_POP;  // raw pop drives crackle this frame
-      for (let n = D_CRACKLE; n >= D_ACCEL; n--) {
-        this.d[n] = Math.max(this.getMin(n), Math.min(this.getMax(n), this.d[n] + this.d[n + 1] * dt));
-      }
-      // Pop is zero only when winding down (space not held) and crackle has
-      // reached its effective minimum, i.e. it cannot decrease further.
-      const atEffMin = this.d[D_CRACKLE] <= this.getMin(D_CRACKLE);
-      this.d[D_POP] = (!spaceHeld && atEffMin) ? 0 : this.d[D_POP];  // effective pop for display
+    this.d[D_POP] = spaceHeld ? MAX_POP : MIN_POP;  // raw pop drives crackle this frame
+    for (let n = D_CRACKLE; n >= D_ACCEL; n--) {
+      let v = this.d[n] + this.d[n + 1] * dt;
+      v = v > this.getMax(n) ? Math.max(this.getMax(n), this.d[n] - D_CLAMP_SPEED * dt) : v;
+      v = v < this.getMin(n) ? Math.min(this.getMin(n), this.d[n] + D_CLAMP_SPEED * dt) : v;
+      this.d[n] = v;
+	  if (this.d[n] > MAX_D[n]) this.d[n] = MAX_D[n];
     }
+    // Pop is zero only when winding down (space not held) and crackle has
+    // reached its effective minimum, i.e. it cannot decrease further.
+    const atEffMin = this.d[D_CRACKLE] <= this.getMin(D_CRACKLE);
+    this.d[D_POP] = (!spaceHeld && atEffMin) ? 0 : this.d[D_POP];  // effective pop for display
 
     // Canvas Y increases downward, so gravity adds to velocityY (pulls down)
     // and engine thrust subtracts from it (pushes up).

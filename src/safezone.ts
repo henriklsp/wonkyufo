@@ -2,6 +2,8 @@ import {
   CANVAS_HEIGHT,
   SAFE_ZONE_FRACTION,
   SAFE_ZONE_SPEED,
+  SAFE_ZONE_FLIP_CHANCE,
+  SAFE_ZONE_FLIP_INTERVAL,
   REBOUND_ZONE_FRACTION,
 } from './constants';
 
@@ -48,11 +50,11 @@ export class SafeZone {
       this.direction = -1;
     }
 
-    // 10 % chance of a random direction flip each second.
+    // Random direction flip checked once per SAFE_ZONE_FLIP_INTERVAL seconds.
     this.flipTimer += dt;
-    if (this.flipTimer >= 1) {
-      this.flipTimer -= 1;
-      if (Math.random() < 0.1) this.direction *= -1;
+    if (this.flipTimer >= SAFE_ZONE_FLIP_INTERVAL) {
+      this.flipTimer -= SAFE_ZONE_FLIP_INTERVAL;
+      if (Math.random() < SAFE_ZONE_FLIP_CHANCE) this.direction *= -1;
     }
   }
 

@@ -4,9 +4,9 @@ import { SafeZone } from './safezone';
 import {
   CANVAS_WIDTH, CANVAS_HEIGHT,
   MAX_ENGINE_ACCEL, ACCEL_EXHAUST_MIN, EXHAUST_Y_OFFSET,
-  MIN_JERK, MAX_JERK, JERK_FLICKER_MAX, JERK_FLICKER_MIN, JERK_PULSE_MIN,
+  MIN_JERK, MAX_JERK, JERK_PULSE_MIN_HZ, JERK_PULSE_MAX_HZ,
   MIN_SNAP, MAX_SNAP, ENGINE_GLOW_Y,
-  MIN_CRACKLE, MAX_CRACKLE, CRACKLE_FLICKER_MAX, CRACKLE_FLICKER_MIN, CRACKLE_PULSE_MIN, CRACKLE_FREQUENCY,
+  MIN_CRACKLE, MAX_CRACKLE, CRACKLE_FREQUENCY,
   STAR_ALPHA_BASE, STAR_ALPHA_SCALE,
   RIM_LIGHT_Y_FRACTION, RIM_LIGHT_RADIUS_FRACTION, RIM_LIGHT_X_SPREAD,
   RIM_LIGHT_X_OFFSETS, RIM_LIGHT_VALUE_MIN,
@@ -112,40 +112,37 @@ export class Renderer {
   // canvas gradient beneath the sprite so it bleeds out around the hull rather
   // than being clipped by the image boundary, and its opacity scales with the
   // current thrust level to give real-time feedback on how much acceleration
+  // Draws the exhaust plume behind the UFO. Called before asteroids so the
+  // plume appears beneath them in the draw order.
+  // Height encodes acceleration. Image and alpha encode jerk:
+  //   Non-negative jerk → exhaust image; negative jerk → exhaustlow image.
+  //   Positive jerk     → binary square-wave alpha (fully on or off).
+  //   Zero/negative jerk→ smooth sine-wave alpha (0..1 continuously).
+  // Frequency linearly interpolates from JERK_PULSE_MIN_HZ at MIN_JERK to JERK_PULSE_MAX_HZ at MAX_JERK.
+  drawExhaust(ufo: UFO): void {
+    const { x, radius: r } = ufo;
+    const y = ufo.d[D_POS];
+    const ctx = this.ctx;
+    const accelT = ufo.d[D_ACCEL] / MAX_ENGINE_ACCEL;
+    const exhaustHeight = ACCEL_EXHAUST_MIN + accelT * (r * 4);
+    const img = ufo.d[D_JERK] >= 0 ? this.exhaustImage : this.exhaustLowImage;
+    const t = (ufo.d[D_JERK] - MIN_JERK) / (MAX_JERK - MIN_JERK); // 0..1
+    const rate = JERK_PULSE_MIN_HZ + (JERK_PULSE_MAX_HZ - JERK_PULSE_MIN_HZ) * t;
+    const wave = Math.sin(2 * Math.PI * rate * this.time);
+    const alpha = ufo.d[D_JERK] > 0 ? (wave >= 0 ? 1 : 0) : 0.5 + 0.5 * wave;
+    if (img) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(img, x - r, y + r - EXHAUST_Y_OFFSET, r * 2, exhaustHeight);
+      ctx.restore();
+    }
+  }
+
   // has built up.
   drawUfo(ufo: UFO): void {
     const { x, radius: r } = ufo;
     const y = ufo.d[D_POS];
     const ctx = this.ctx;
-
-    // Exhaust is drawn before the UFO sprite so it appears behind the hull.
-    // Height encodes acceleration. Image and alpha encode jerk:
-    //   Non-negative jerk → exhaust image; negative jerk → exhaustlow image.
-    //   Positive jerk     → binary square-wave alpha (fully on or off).
-    //   Zero/negative jerk→ smooth sine-wave alpha (0..1 continuously).
-    // Frequency is piecewise-linear: JERK_PULSE_MIN at MIN_JERK, rising to
-    // JERK_FLICKER_MIN at zero, then to JERK_FLICKER_MAX at MAX_JERK.
-    {
-      const accelT = ufo.d[D_ACCEL] / MAX_ENGINE_ACCEL;
-      const exhaustHeight = ACCEL_EXHAUST_MIN + accelT * (r * 2 - ACCEL_EXHAUST_MIN);
-      const img = ufo.d[D_JERK] >= 0 ? this.exhaustImage : this.exhaustLowImage;
-      let rate: number;
-      if (ufo.d[D_JERK] >= 0) {
-        const t = ufo.d[D_JERK] / MAX_JERK; // 0..1
-        rate = JERK_FLICKER_MIN + (JERK_FLICKER_MAX - JERK_FLICKER_MIN) * t;
-      } else {
-        const t = ufo.d[D_JERK] / MIN_JERK; // 0..1 as jerk approaches MIN_JERK
-        rate = JERK_FLICKER_MIN - (JERK_FLICKER_MIN - JERK_PULSE_MIN) * t;
-      }
-      const wave = Math.sin(2 * Math.PI * rate * this.time);
-      const alpha = ufo.d[D_JERK] > 0 ? (wave >= 0 ? 1 : 0) : 0.5 + 0.5 * wave;
-      if (img) {
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.drawImage(img, x - r, y + r - EXHAUST_Y_OFFSET, r * 2, exhaustHeight);
-        ctx.restore();
-      }
-    }
 
     // Engine glow: same size as UFO image, positioned so 5 px overlaps UFO bottom.
     // Snap sets base alpha (0 at snap≤0, linear to 1 at MAX_SNAP).

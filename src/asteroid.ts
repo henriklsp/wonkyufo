@@ -1,3 +1,7 @@
+import {
+  ASTEROID_ROTATION_MAX,
+} from './constants';
+
 // Asteroid is a single obstacle that travels from right to left across the
 // screen. Its shape, rotation speed, and entry point are all randomised at
 // construction time so no two feel identical, which is important for replayability
@@ -10,34 +14,19 @@ export class Asteroid {
   radius: number;
   speedX: number;
 
-  private vertices: { x: number; y: number }[];
+  readonly imageIndex: number; // 0 or 1 — selects which asteroid sprite to draw
   // Public so the renderer can apply the same angle when drawing the sprite.
   rotation: number;
   private rotationSpeed: number;
 
-  // Generates a unique irregular polygon for this instance. Vertices are stored
-  // in local (object-centred) space so the renderer can apply translation and
-  // rotation via canvas transforms without recomputing positions each frame.
   constructor(x: number, y: number, radius: number, speedX: number) {
     this.x = x;
     this.y = y;
     this.radius = radius;
     this.speedX = speedX;
+    this.imageIndex = Math.random() < 0.5 ? 0 : 1;
     this.rotation = Math.random() * Math.PI * 2;
-    this.rotationSpeed = (Math.random() - 0.5) * 2.5;
-
-    // Each vertex is placed at a random distance between 65–100% of the radius
-    // along evenly spaced angles, producing a lumpy rock rather than a circle.
-    const numVerts = 8 + Math.floor(Math.random() * 5);
-    this.vertices = [];
-    for (let i = 0; i < numVerts; i++) {
-      const angle = (i / numVerts) * Math.PI * 2;
-      const dist = radius * (0.65 + Math.random() * 0.35);
-      this.vertices.push({
-        x: Math.cos(angle) * dist,
-        y: Math.sin(angle) * dist,
-      });
-    }
+    this.rotationSpeed = (Math.random() - 0.5) * ASTEROID_ROTATION_MAX;
   }
 
   // Moves the asteroid left and spins it. Spin is purely cosmetic but makes

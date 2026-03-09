@@ -15,6 +15,7 @@ import {
   MIN_SPAWN_INTERVAL,
   SAFE_ZONE_FRACTION,
   REBOUND_ZONE_FRACTION,
+  REBOUND_ZONE_SPAWN_CHANCE,
 } from './constants';
 
 // Spawner owns the pacing of the game: when asteroids appear, how large they
@@ -91,10 +92,10 @@ export class Spawner {
     const zoneDepth = REBOUND_ZONE_FRACTION * CANVAS_HEIGHT;
     const roll = Math.random();
     let y: number;
-    if (roll < 0.15) {
+    if (roll < REBOUND_ZONE_SPAWN_CHANCE) {
       // Upper rebound zone
       y = radius + Math.random() * (zoneDepth - radius);
-    } else if (roll < 0.30) {
+    } else if (roll < REBOUND_ZONE_SPAWN_CHANCE * 2) {
       // Lower rebound zone
       y = (CANVAS_HEIGHT - zoneDepth) + Math.random() * (zoneDepth - radius);
     } else {

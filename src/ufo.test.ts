@@ -13,7 +13,6 @@ import {
   UFO_COLLISION_RADIUS,
 } from './constants';
 
-// constants.ts has EASY_MODE = false, so all tests run the full 6-level chain.
 
 const DT = 1 / 60;  // typical frame delta (~16 ms)
 

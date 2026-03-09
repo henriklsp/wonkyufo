@@ -162,12 +162,14 @@ export class Game {
     if (this.state === 'title') {
       this.renderer.drawTitle();
     } else if (this.state === 'playing') {
+      this.renderer.drawExhaust(this.ufo);
       for (const a of this.asteroids) this.renderer.drawAsteroid(a);
       this.renderer.drawUfo(this.ufo);
       this.renderer.drawHud(this.score);
     } else {
       // The dead screen keeps the final game frame visible beneath the overlay
       // so the player can see exactly what killed them.
+      this.renderer.drawExhaust(this.ufo);
       for (const a of this.asteroids) this.renderer.drawAsteroid(a);
       this.renderer.drawUfo(this.ufo);
       this.renderer.drawDead(this.score);

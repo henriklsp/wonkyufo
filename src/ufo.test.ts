@@ -167,13 +167,16 @@ describe('reset()', () => {
     expect(ufo.d[D_POS]).toBe(CANVAS_HEIGHT / 2);
   });
 
-  it('all other derivatives are 0 after reset', () => {
+  it('velocity is 0 and derivatives are at their minimums after reset', () => {
     const ufo = new UFO();
     for (let i = 1; i <= 6; i++) ufo.d[i] = 999;
     ufo.reset();
-    for (let i = D_VEL; i <= D_POP; i++) {
-      expect(ufo.d[i]).toBe(0);
-    }
+    expect(ufo.d[D_VEL]).toBe(0);
+    expect(ufo.d[D_ACCEL]).toBe(MIN_ENGINE_ACCEL);
+    expect(ufo.d[D_JERK]).toBe(MIN_JERK);
+    expect(ufo.d[D_SNAP]).toBe(MIN_SNAP);
+    expect(ufo.d[D_CRACKLE]).toBe(MIN_CRACKLE);
+    expect(ufo.d[D_POP]).toBe(MIN_POP);
   });
 });
 

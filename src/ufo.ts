@@ -71,7 +71,7 @@ export class UFO {
   // Resets only the mutable physics state, not position x, because x is
   // structural and never changes between runs.
   reset(): void {
-    this.d = [CANVAS_HEIGHT / 2, 0, 0, 0, 0, 0, 0];
+    this.d = [CANVAS_HEIGHT / 2, 0, MIN_ENGINE_ACCEL, MIN_JERK, MIN_SNAP, MIN_CRACKLE, MIN_POP];
   }
 
   // Returns the effective upper bound for derivative n. For orders above

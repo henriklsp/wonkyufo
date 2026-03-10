@@ -75,13 +75,14 @@ export class Renderer {
   // missing file does not prevent the others from loading.
   async loadAssets(): Promise<void> {
     const tryLoad = (src: string) => loadImage(src).catch(() => null);
+    const base = import.meta.env.BASE_URL;
     [this.ufoImage, this.asteroidImages[0], this.asteroidImages[1], this.exhaustImage, this.exhaustLowImage, this.engineGlowImage] = await Promise.all([
-      tryLoad('/assets/ufo.png'),
-      tryLoad('/assets/asteroid1.png'),
-      tryLoad('/assets/asteroid2.png'),
-      tryLoad('/assets/exhaust.png'),
-      tryLoad('/assets/exhaustlow.png'),
-      tryLoad('/assets/engineglow.png'),
+      tryLoad(`${base}assets/ufo.png`),
+      tryLoad(`${base}assets/asteroid1.png`),
+      tryLoad(`${base}assets/asteroid2.png`),
+      tryLoad(`${base}assets/exhaust.png`),
+      tryLoad(`${base}assets/exhaustlow.png`),
+      tryLoad(`${base}assets/engineglow.png`),
     ]);
   }
 

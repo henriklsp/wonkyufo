@@ -26,10 +26,10 @@ export const MAX_ENGINE_ACCEL = 80;    // pixels/sec²  (max upward thrust)
 export const MIN_ENGINE_ACCEL = 0;     // pixels/sec²  (min upward thrust — 0 means thrusters only push up or turn off)
 export const MAX_JERK = 100;            // pixels/sec³
 export const MIN_JERK = -100;           // pixels/sec³
-export const MAX_SNAP = 100;           // pixels/sec⁴
-export const MIN_SNAP = -200;           // pixels/sec⁴
-export const MAX_CRACKLE = 100;        // pixels/sec⁵
-export const MIN_CRACKLE = -200;       // pixels/sec⁵
+export const MAX_SNAP = 80;           // pixels/sec⁴
+export const MIN_SNAP = -100;           // pixels/sec⁴
+export const MAX_CRACKLE = 70;        // pixels/sec⁵
+export const MIN_CRACKLE = -100;       // pixels/sec⁵
 export const MAX_POP = 10000;           // pixels/sec⁶
 export const MIN_POP = -200;         // pixels/sec⁶
 // Rate at which a derivative smoothly returns toward its limit when outside bounds.
@@ -37,8 +37,8 @@ export const D_CLAMP_SPEED = 1000;     // units/sec (shared across all derivativ
 
 // Exhaust flicker/pulse rates driven by jerk (Hz).
 // Frequency linearly interpolates from JERK_PULSE_MIN_HZ at MIN_JERK to JERK_PULSE_MAX_HZ at MAX_JERK.
-export const JERK_PULSE_MIN_HZ = 3;   // Hz — exhaust rate at MIN_JERK
-export const JERK_PULSE_MAX_HZ = 18;  // Hz — exhaust rate at MAX_JERK
+export const JERK_PULSE_MIN_HZ = 2;   // Hz — exhaust rate at MIN_JERK
+export const JERK_PULSE_MAX_HZ = 15;  // Hz — exhaust rate at MAX_JERK
 // Exhaust: min height in pixels (at zero accel).
 export const ACCEL_EXHAUST_MIN = 5;    // px — exhaust height at zero acceleration
 // How far above the UFO bottom edge the top of the exhaust image is anchored.

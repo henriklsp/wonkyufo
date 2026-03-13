@@ -108,11 +108,6 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  // Draws the UFO sprite centred on ufo.x/ufo.y at exactly diameter (radius*2)
-  // so the image fills the collision circle. The engine glow is rendered as a
-  // canvas gradient beneath the sprite so it bleeds out around the hull rather
-  // than being clipped by the image boundary, and its opacity scales with the
-  // current thrust level to give real-time feedback on how much acceleration
   // Draws the exhaust plume behind the UFO. Called before asteroids so the
   // plume appears beneath them in the draw order.
   // Height encodes acceleration. Image and alpha encode jerk:
@@ -139,7 +134,10 @@ export class Renderer {
     }
   }
 
-  // has built up.
+  // Draws the UFO sprite centred on ufo.x/ufo.y at exactly diameter (radius*2)
+  // so the image fills the collision circle. The engine glow is rendered beneath
+  // the sprite so it bleeds out around the hull, and its opacity scales with the
+  // current thrust level to give real-time feedback on how much acceleration has built up.
   drawUfo(ufo: UFO): void {
     const { x, radius: r } = ufo;
     const y = ufo.d[D_POS];
@@ -271,7 +269,7 @@ export class Renderer {
     // Construct a minimal stand-in UFO just to supply the position and radius
     // that drawUfo needs. Its physics state is irrelevant here.
     const demoUfo = new UFO();
-    demoUfo.d[D_POS] = cy - 110;
+    demoUfo.d[D_POS] = CANVAS_HEIGHT / 4;
     this.drawUfo(demoUfo);
 
     ctx.textAlign = 'center';

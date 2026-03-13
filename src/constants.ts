@@ -26,18 +26,18 @@ export const MAX_ENGINE_ACCEL = 80;    // pixels/sec²  (max upward thrust)
 export const MIN_ENGINE_ACCEL = 0;     // pixels/sec²  (min upward thrust — 0 means thrusters only push up or turn off)
 export const MAX_JERK = 100;            // pixels/sec³
 export const MIN_JERK = -100;           // pixels/sec³
-export const MAX_SNAP = 80;           // pixels/sec⁴
+export const MAX_SNAP = 50;           // pixels/sec⁴
 export const MIN_SNAP = -100;           // pixels/sec⁴
-export const MAX_CRACKLE = 70;        // pixels/sec⁵
-export const MIN_CRACKLE = -100;       // pixels/sec⁵
+export const MAX_CRACKLE = 25;        // pixels/sec⁵
+export const MIN_CRACKLE = -50;       // pixels/sec⁵
 export const MAX_POP = 10000;           // pixels/sec⁶
-export const MIN_POP = -200;         // pixels/sec⁶
+export const MIN_POP = -40;         // pixels/sec⁶
 // Rate at which a derivative smoothly returns toward its limit when outside bounds.
 export const D_CLAMP_SPEED = 1000;     // units/sec (shared across all derivative orders)
 
 // Exhaust flicker/pulse rates driven by jerk (Hz).
 // Frequency linearly interpolates from JERK_PULSE_MIN_HZ at MIN_JERK to JERK_PULSE_MAX_HZ at MAX_JERK.
-export const JERK_PULSE_MIN_HZ = 2;   // Hz — exhaust rate at MIN_JERK
+export const JERK_PULSE_MIN_HZ = 1;   // Hz — exhaust rate at MIN_JERK
 export const JERK_PULSE_MAX_HZ = 15;  // Hz — exhaust rate at MAX_JERK
 // Exhaust: min height in pixels (at zero accel).
 export const ACCEL_EXHAUST_MIN = 5;    // px — exhaust height at zero acceleration
@@ -50,7 +50,7 @@ export const EXHAUST_Y_OFFSET = 17;    // px
 export const ENGINE_GLOW_Y = -35;
 // When crackle is positive the engine glow flashes at CRACKLE_FREQUENCY Hz.
 // Each cycle: 10% at alpha=1, 10% at alpha=0, 80% at snap-driven alpha.
-export const CRACKLE_FREQUENCY = 10;  // Hz
+export const CRACKLE_FREQUENCY = 7;  // Hz
 
 // Rim lights on the UFO hull encode the pop/crackle state via HSV colour.
 export const RIM_LIGHT_Y_FRACTION = 0.22;      // light centre Y offset as fraction of UFO radius (below centre)
@@ -61,7 +61,7 @@ export const RIM_LIGHT_VALUE_MIN = 0.5;        // HSV value at minimum crackle (
 
 // The UFO collision radius is slightly smaller than its visual art to give the
 // player a touch of forgiveness on near misses.
-export const UFO_RADIUS = 30;
+export const UFO_RADIUS = 32;
 export const UFO_COLLISION_RADIUS = 22;
 // Keeping the UFO in the left quarter lets the player see far ahead while
 // still having room to react.
@@ -94,6 +94,14 @@ export const SPAWN_INTERVAL_BASE = 3000;  // ms between spawns
 export const SPAWN_INTERVAL_RANGE = 600;  // randomness +/- ms
 // Floor prevents the game from becoming literally impossible at high difficulty.
 export const MIN_SPAWN_INTERVAL = 400;    // ms floor
+
+// Audio volumes (0..1)
+export const VOL_JET_EXHAUST = 0.3;  // accelerate
+export const VOL_JET_ENGINE  = 0.5;  // jerk
+export const VOL_SPACESHIP   = 0.5;  // snap
+export const VOL_UFO_NOISE      = 0.5;  // ufo noise when jerk/snap/crackle all negative
+export const VOL_GAME_OVER   = 1.0;  // game over sting
+export const VOL_RAMP_RATE   = 0.8;  // max volume change per second (2.0 = 0→1 in 0.5s)
 
 // Difficulty ramp
 // Steps are time-based rather than score-based so difficulty is predictable

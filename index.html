@@ -16,10 +16,24 @@
         overflow: hidden;
       }
       canvas { display: block; }
+      #mute-btn {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        opacity: 0.6;
+        line-height: 1;
+        padding: 4px;
+      }
+      #mute-btn:hover { opacity: 1; }
     </style>
   </head>
   <body>
     <canvas id="canvas"></canvas>
+    <button id="mute-btn">🔊</button>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

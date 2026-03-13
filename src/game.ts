@@ -1,8 +1,9 @@
-import { UFO, D_POS } from './ufo';
+import { UFO, D_POS, D_ACCEL, D_JERK, D_SNAP, D_CRACKLE } from './ufo';
 import { Asteroid } from './asteroid';
 import { Spawner } from './spawner';
 import { SafeZone } from './safezone';
 import { Renderer, Star } from './renderer';
+import { AudioManager } from './audio';
 import {
   CANVAS_WIDTH, CANVAS_HEIGHT, UFO_COLLISION_RADIUS,
   STAR_COUNT, STAR_RADIUS_MIN, STAR_RADIUS_RANGE, STAR_SPEED_MIN, STAR_SPEED_RANGE,
@@ -23,6 +24,7 @@ export class Game {
   private spawner: Spawner;
   private safeZone: SafeZone;
   private renderer: Renderer;
+  private audio: AudioManager;
   private spaceHeld = false;
   private lastTime: number | null = null;
   private score = 0;
@@ -36,6 +38,7 @@ export class Game {
   constructor(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d')!;
     this.renderer = new Renderer(ctx);
+    this.audio = new AudioManager();
     this.ufo = new UFO();
     this.spawner = new Spawner();
     this.safeZone = new SafeZone();
@@ -53,13 +56,19 @@ export class Game {
 
     // keydown fires repeatedly when held, so the !spaceHeld guard prevents
     // startGame being called on every repeated keydown event after the first.
+    const muteBtn = document.getElementById('mute-btn') as HTMLButtonElement;
+    muteBtn.addEventListener('click', () => {
+      const muted = this.audio.toggleMute();
+      muteBtn.textContent = muted ? '🔇' : '🔊';
+    });
+
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
         if (!this.spaceHeld) {
           this.spaceHeld = true;
-          if (this.state === 'title') this.startGame();
-          else if (this.state === 'dead') this.startGame();
+          this.audio.unlock();
+          if (this.state === 'title' || this.state === 'dead') this.startGame();
         }
       }
     });
@@ -73,6 +82,7 @@ export class Game {
   // ensures drawUfo and drawAsteroid always have images available from frame one.
   async start(): Promise<void> {
     await this.renderer.loadAssets();
+    await this.audio.loadAssets();
     requestAnimationFrame((t) => this.loop(t));
   }
 
@@ -88,6 +98,7 @@ export class Game {
     this.score = 0;
     this.scoreTimer = 0;
     this.launchGrace = 0.2;
+    this.audio.fadeOutGameOver();
   }
 
   // Core animation loop. lastTime starts null so the first frame produces dt=0,
@@ -110,6 +121,7 @@ export class Game {
   // where a collision check runs against stale asteroid positions.
   private update(dt: number) {
     this.renderer.tick(dt);
+    this.audio.tickGameOver(dt);
     for (const star of this.stars) {
       star.x -= star.speed * dt;
       // Wrap rather than respawn so star density stays constant.
@@ -120,6 +132,7 @@ export class Game {
 
     this.launchGrace = Math.max(0, this.launchGrace - dt);
     this.ufo.update(dt, this.launchGrace > 0 ? false : this.spaceHeld);
+    this.audio.update(dt, this.ufo.d[D_ACCEL], this.ufo.d[D_JERK], this.ufo.d[D_SNAP], this.ufo.d[D_CRACKLE]);
     this.safeZone.update(dt);
 
     const newAsteroids = this.spawner.update(dt, this.safeZone);
@@ -138,6 +151,8 @@ export class Game {
     // even if no asteroid was involved.
     if (this.ufo.isOutOfBounds()) {
       this.state = 'dead';
+      this.audio.stopAll();
+      this.audio.playGameOver();
       return;
     }
 
@@ -148,6 +163,9 @@ export class Game {
       const dy = this.ufo.d[D_POS] - a.y;
       if (Math.sqrt(dx * dx + dy * dy) < UFO_COLLISION_RADIUS + a.radius) {
         this.state = 'dead';
+        this.audio.stopAll();
+        this.audio.playMetalHit();
+        this.audio.playGameOver();
         return;
       }
     }

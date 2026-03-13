@@ -65,13 +65,13 @@ export class UFO {
 
   constructor() {
     this.x = CANVAS_WIDTH * UFO_X_FRACTION;
-    this.d[D_POS] = CANVAS_HEIGHT / 2;
+    this.d[D_POS] = CANVAS_HEIGHT / 4;
   }
 
   // Resets only the mutable physics state, not position x, because x is
   // structural and never changes between runs.
   reset(): void {
-    this.d = [CANVAS_HEIGHT / 2, 0, 0, 0, 0, 0, 0];
+    this.d = [CANVAS_HEIGHT / 4, 0, 0, 0, 0, 0, 0];
   }
 
   // Returns the effective upper bound for derivative n. For orders above

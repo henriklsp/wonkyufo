@@ -159,11 +159,11 @@ describe('atEffMin / effective pop', () => {
 });
 
 describe('reset()', () => {
-  it('d[D_POS] = CANVAS_HEIGHT / 2 after reset', () => {
+  it('d[D_POS] = CANVAS_HEIGHT / 4 after reset', () => {
     const ufo = new UFO();
     ufo.d[D_POS] = 999;
     ufo.reset();
-    expect(ufo.d[D_POS]).toBe(CANVAS_HEIGHT / 2);
+    expect(ufo.d[D_POS]).toBe(CANVAS_HEIGHT / 4);
   });
 
   it('velocity is 0 and derivatives are at their minimums after reset', () => {

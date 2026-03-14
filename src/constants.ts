@@ -96,12 +96,14 @@ export const SPAWN_INTERVAL_RANGE = 600;  // randomness +/- ms
 export const MIN_SPAWN_INTERVAL = 400;    // ms floor
 
 // Audio volumes (0..1)
-export const VOL_JET_EXHAUST = 0.3;  // accelerate
-export const VOL_JET_ENGINE  = 0.5;  // jerk
-export const VOL_SPACESHIP   = 0.5;  // snap
-export const VOL_UFO_NOISE      = 0.5;  // ufo noise when jerk/snap/crackle all negative
-export const VOL_GAME_OVER   = 1.0;  // game over sting
-export const VOL_RAMP_RATE   = 0.8;  // max volume change per second (2.0 = 0→1 in 0.5s)
+export const VOL_JET_EXHAUST = 0.2;  // accelerate
+export const VOL_JET_ENGINE  = 0.3;  // jerk
+export const VOL_SPACESHIP   = 0.25;  // snap
+export const VOL_UFO_NOISE   = 0.2;  // ufo noise when jerk/snap/crackle all negative
+export const VOL_GAME_OVER   = 0.8;  // game over sting
+export const VOL_TITLE_MUSIC = 0.3;  // title screen track
+export const VOL_MUSIC       = 0.3;  // background soundtrack
+export const VOL_RAMP_RATE   = 0.6;  // max volume change per second 
 
 // Difficulty ramp
 // Steps are time-based rather than score-based so difficulty is predictable

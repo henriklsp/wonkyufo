@@ -43,6 +43,13 @@ export class Game {
     this.spawner = new Spawner();
     this.safeZone = new SafeZone();
 
+    canvas.addEventListener('mouseenter', () => {
+      if (this.state === 'title') this.audio.playTitleMusic();
+    });
+    canvas.addEventListener('pointerdown', () => {
+      if (this.state === 'title') this.audio.playTitleMusic();
+    });
+
     // Varying radius and speed creates a parallax-like depth effect: small,
     // slow stars read as distant; larger, faster ones as close.
     for (let i = 0; i < STAR_COUNT; i++) {
@@ -60,9 +67,13 @@ export class Game {
     muteBtn.addEventListener('click', () => {
       const muted = this.audio.toggleMute();
       muteBtn.textContent = muted ? '🔇' : '🔊';
+      if (!muted && this.state === 'title') this.audio.playTitleMusic();
     });
 
     window.addEventListener('keydown', (e) => {
+      if (e.code !== 'Space' && this.state === 'title') {
+        this.audio.playTitleMusic();
+      }
       if (e.code === 'Space') {
         e.preventDefault();
         if (!this.spaceHeld) {
@@ -75,6 +86,11 @@ export class Game {
 
     window.addEventListener('keyup', (e) => {
       if (e.code === 'Space') this.spaceHeld = false;
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.audio.suspend();
+      else this.audio.resume();
     });
   }
 
@@ -98,7 +114,9 @@ export class Game {
     this.score = 0;
     this.scoreTimer = 0;
     this.launchGrace = 0.2;
+    this.audio.fadeOutTitleMusic();
     this.audio.fadeOutGameOver();
+    this.audio.playMusic();
   }
 
   // Core animation loop. lastTime starts null so the first frame produces dt=0,
@@ -122,6 +140,8 @@ export class Game {
   private update(dt: number) {
     this.renderer.tick(dt);
     this.audio.tickGameOver(dt);
+    this.audio.tickTitleMusic(dt);
+    this.audio.tickMusic(dt);
     for (const star of this.stars) {
       star.x -= star.speed * dt;
       // Wrap rather than respawn so star density stays constant.
@@ -152,6 +172,7 @@ export class Game {
     if (this.ufo.isOutOfBounds()) {
       this.state = 'dead';
       this.audio.stopAll();
+      this.audio.fadeOutMusic();
       this.audio.playGameOver();
       return;
     }
@@ -164,6 +185,7 @@ export class Game {
       if (Math.sqrt(dx * dx + dy * dy) < UFO_COLLISION_RADIUS + a.radius) {
         this.state = 'dead';
         this.audio.stopAll();
+        this.audio.fadeOutMusic();
         this.audio.playMetalHit();
         this.audio.playGameOver();
         return;

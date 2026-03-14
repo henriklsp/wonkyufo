@@ -1,6 +1,6 @@
 import {
   MAX_ENGINE_ACCEL,
-  VOL_JET_EXHAUST, VOL_JET_ENGINE, VOL_SPACESHIP, VOL_UFO_NOISE, VOL_GAME_OVER,
+  VOL_JET_EXHAUST, VOL_JET_ENGINE, VOL_SPACESHIP, VOL_UFO_NOISE, VOL_GAME_OVER, VOL_TITLE_MUSIC, VOL_MUSIC,
   VOL_RAMP_RATE,
 } from './constants';
 
@@ -20,9 +20,14 @@ export class AudioManager {
   private jetEngine:  Track = { el: null, current: 0, playing: false };
   private spaceship:  Track = { el: null, current: 0, playing: false };
   private ufoNoise:   Track = { el: null, current: 0, playing: false, resetOnStart: true };
+  private titleMusicEl: HTMLAudioElement | null = null;
+  private titleMusicStarted = false;
+  private titleMusicFadingOut = false;
   private metalHit: HTMLAudioElement | null = null;
   private gameOver: Track = { el: null, current: 0, playing: false };
   private gameOverTarget = 0;
+  private music: Track = { el: null, current: 0, playing: false };
+  private musicTarget = 0;
   private ufoNoiseActive = false;
   private muted = false;
 
@@ -43,6 +48,12 @@ export class AudioManager {
     this.jetEngine.el  = make('jetengine.mp3');
     this.spaceship.el  = make('spaceship.mp3');
     this.ufoNoise.el   = make('ufo_noise.mp3');
+    this.music.el      = make('SpunkyUFO.mp3');
+    const tm = new Audio(`${base}assets/WonkyUFO.mp3`);
+    tm.loop = false;
+    tm.volume = 0;
+    tm.preload = 'auto';
+    this.titleMusicEl = tm;
     const hit = new Audio(`${base}assets/metal-hit.mp3`);
     hit.preload = 'auto';
     this.metalHit = hit;
@@ -60,6 +71,7 @@ export class AudioManager {
     }
     if (this.metalHit) { this.metalHit.volume = 0; this.metalHit.play().catch(() => {}); this.metalHit.pause(); }
     if (this.gameOver.el) { this.gameOver.el.volume = 0; this.gameOver.el.play().catch(() => {}); this.gameOver.el.pause(); }
+    if (this.music.el && !this.music.playing) { this.music.el.volume = 0; this.music.el.play().catch(() => {}); this.music.el.pause(); }
   }
 
   // Called every frame with current physics derivative values.
@@ -80,6 +92,8 @@ export class AudioManager {
     }
     if (this.metalHit) this.metalHit.muted = this.muted;
     if (this.gameOver.el) this.gameOver.el.muted = this.muted;
+    if (this.titleMusicEl) this.titleMusicEl.muted = this.muted;
+    if (this.music.el) this.music.el.muted = this.muted;
     return this.muted;
   }
 
@@ -99,6 +113,74 @@ export class AudioManager {
   // state so the fade-out continues after a restart.
   tickGameOver(dt: number): void {
     this.drive(dt, this.gameOver, this.gameOverTarget);
+  }
+
+  // Rewinds and immediately plays the soundtrack at VOL_MUSIC.
+  playMusic(): void {
+    const track = this.music;
+    if (!track.el) return;
+    track.el.currentTime = 0;
+    track.current = VOL_MUSIC;
+    track.el.volume = VOL_MUSIC;
+    this.musicTarget = VOL_MUSIC;
+    if (!track.playing) {
+      track.el.play().catch(() => {});
+      track.playing = true;
+    }
+  }
+
+  fadeOutMusic(): void {
+    this.musicTarget = 0;
+  }
+
+  // Drives the music track ramp. Called every frame so fade-out completes
+  // even after the game transitions away from the playing state.
+  tickMusic(dt: number): void {
+    this.drive(dt, this.music, this.musicTarget);
+  }
+
+  // Safe to call from any trigger (key, mouseover, unmute). play() is called
+  // directly each time until it succeeds — calling play() on an already-playing
+  // element is a no-op. titleMusicStarted is only set on the first success so
+  // non-gesture attempts (e.g. mouseenter) fail silently and leave the door
+  // open for the next real user gesture.
+  playTitleMusic(): void {
+    if (this.titleMusicStarted) return;
+    const el = this.titleMusicEl;
+    if (!el) return;
+    el.currentTime = 0;
+    el.volume = VOL_TITLE_MUSIC;
+    el.play().then(() => {
+      this.titleMusicStarted = true;
+      this.titleMusicFadingOut = false;
+    }).catch(() => {});
+  }
+
+  fadeOutTitleMusic(): void {
+    this.titleMusicFadingOut = true;
+  }
+
+  tickTitleMusic(dt: number): void {
+    const el = this.titleMusicEl;
+    if (!el || !this.titleMusicStarted || !this.titleMusicFadingOut) return;
+    el.volume = Math.max(0, el.volume - VOL_RAMP_RATE * dt);
+    if (el.volume <= 0) el.pause();
+  }
+
+  suspend(): void {
+    for (const track of [...this.tracks, this.music, this.gameOver]) {
+      if (track.el && track.playing) track.el.pause();
+    }
+    if (this.titleMusicEl && !this.titleMusicEl.paused) this.titleMusicEl.pause();
+  }
+
+  resume(): void {
+    for (const track of [...this.tracks, this.music, this.gameOver]) {
+      if (track.el && track.playing) track.el.play().catch(() => {});
+    }
+    if (this.titleMusicEl && this.titleMusicStarted && !this.titleMusicFadingOut && this.titleMusicEl.volume > 0) {
+      this.titleMusicEl.play().catch(() => {});
+    }
   }
 
   playMetalHit(): void {

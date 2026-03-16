@@ -5,13 +5,13 @@ import {
   CANVAS_HEIGHT,
   ASTEROID_SPEED_BASE,
   ASTEROID_SPEED_RANGE,
+  ASTEROID_SPEED_MAX_FACTOR,
+  ASTEROID_SPEED_CAP_TIME,
   ASTEROID_RADIUS_MIN,
   ASTEROID_RADIUS_MAX,
   SPAWN_INTERVAL_BASE,
   SPAWN_INTERVAL_RANGE,
-  DIFFICULTY_RAMP_INTERVAL,
-  SPEED_INCREASE_PER_STEP,
-  INTERVAL_DECREASE_PER_STEP,
+  SPAWN_RAMP_RATE,
   MIN_SPAWN_INTERVAL,
   SAFE_ZONE_FRACTION,
   REBOUND_ZONE_FRACTION,
@@ -26,8 +26,7 @@ import {
 export class Spawner {
   private timer: number = 0;
   private nextSpawn: number;
-  private difficultyTimer: number = 0;
-  private difficultyStep: number = 0;
+  private elapsed: number = 0; // total seconds since game start
 
   constructor() {
     this.nextSpawn = this.randomInterval();
@@ -37,26 +36,16 @@ export class Spawner {
   // at the same difficulty, regardless of how far the previous game progressed.
   reset() {
     this.timer = 0;
-    this.difficultyTimer = 0;
-    this.difficultyStep = 0;
+    this.elapsed = 0;
     this.nextSpawn = this.randomInterval();
   }
 
-  // Advances both timers and returns any asteroids that should be added to the
+  // Advances timers and returns any asteroids that should be added to the
   // scene this frame. Returning new asteroids rather than mutating a shared list
   // keeps the spawner decoupled from the game's asteroid collection.
   update(dt: number, safeZone: SafeZone): Asteroid[] {
     this.timer += dt;
-    this.difficultyTimer += dt;
-
-    // Difficulty steps up on a fixed wall-clock cadence. Subtracting rather
-    // than resetting handles the case where dt pushes past multiple thresholds
-    // in a single frame (unlikely but correct).
-    const rampSecs = DIFFICULTY_RAMP_INTERVAL / 1000;
-    if (this.difficultyTimer >= rampSecs) {
-      this.difficultyTimer -= rampSecs;
-      this.difficultyStep++;
-    }
+    this.elapsed += dt;
 
     // The while loop catches up if a frame was very long (e.g. tab unfocus).
     // The dt cap in the game loop means this normally fires at most once.
@@ -69,16 +58,13 @@ export class Spawner {
     return spawned;
   }
 
-  // Computes a randomised wait time for the next spawn, shrinking the base
-  // interval as difficulty climbs but never going below the floor that
-  // keeps the game physically survivable.
+  // Computes a randomised wait time for the next spawn. Spawn interval shrinks
+  // continuously at SPAWN_RAMP_RATE ms/sec with no upper time cap, so the field
+  // keeps getting denser even after asteroid speed has plateaued.
   private randomInterval(): number {
-    const baseMs = Math.max(
-      MIN_SPAWN_INTERVAL,
-      SPAWN_INTERVAL_BASE - this.difficultyStep * INTERVAL_DECREASE_PER_STEP
-    );
+    const baseMs = SPAWN_INTERVAL_BASE - this.elapsed * SPAWN_RAMP_RATE;
     const jitter = (Math.random() - 0.5) * SPAWN_INTERVAL_RANGE;
-    return (baseMs + jitter) / 1000; // convert to seconds to match dt units
+    return Math.max(MIN_SPAWN_INTERVAL, baseMs + jitter) / 1000; // convert to seconds to match dt units
   }
 
   // Constructs one asteroid at a random height along the right edge. Placing it
@@ -89,27 +75,47 @@ export class Spawner {
       ASTEROID_RADIUS_MIN +
       Math.random() * (ASTEROID_RADIUS_MAX - ASTEROID_RADIUS_MIN);
     const x = CANVAS_WIDTH + radius;
-    const zoneDepth = REBOUND_ZONE_FRACTION * CANVAS_HEIGHT;
+
+    const speedFactor = Math.min(
+      1 + this.elapsed * (ASTEROID_SPEED_MAX_FACTOR - 1) / ASTEROID_SPEED_CAP_TIME,
+      ASTEROID_SPEED_MAX_FACTOR
+    );
+    const speed = speedFactor * (ASTEROID_SPEED_BASE + (Math.random() - 0.5) * ASTEROID_SPEED_RANGE);
+    const travelTime = CANVAS_WIDTH / speed;
+
     const roll = Math.random();
     let y: number;
     if (roll < REBOUND_ZONE_SPAWN_CHANCE) {
-      // Upper rebound zone
-      y = radius + Math.random() * (zoneDepth - radius);
+      y = this.yInUpperReboundZone(radius);
     } else if (roll < REBOUND_ZONE_SPAWN_CHANCE * 2) {
-      // Lower rebound zone
-      y = (CANVAS_HEIGHT - zoneDepth) + Math.random() * (zoneDepth - radius);
+      y = this.yInLowerReboundZone(radius);
     } else {
-      // Anywhere on screen; push out of safe zone if needed.
-      y = radius + Math.random() * (CANVAS_HEIGHT - radius * 2);
-      if (safeZone.overlaps(y, radius)) {
-        const push = SAFE_ZONE_FRACTION * CANVAS_HEIGHT + radius;
-        y += Math.random() < 0.5 ? -push : push;
-      }
+      y = this.yAvoidingSafeZone(radius, safeZone, travelTime);
     }
-    const speed =
-      ASTEROID_SPEED_BASE +
-      this.difficultyStep * SPEED_INCREASE_PER_STEP +
-      (Math.random() - 0.5) * ASTEROID_SPEED_RANGE;
+
     return new Asteroid(x, y, radius, -speed);
+  }
+
+  private yInUpperReboundZone(radius: number): number {
+    const zoneDepth = REBOUND_ZONE_FRACTION * CANVAS_HEIGHT;
+    return radius + Math.random() * (zoneDepth - radius);
+  }
+
+  private yInLowerReboundZone(radius: number): number {
+    const zoneDepth = REBOUND_ZONE_FRACTION * CANVAS_HEIGHT;
+    return (CANVAS_HEIGHT - zoneDepth) + Math.random() * (zoneDepth - radius);
+  }
+
+  // Tries up to 3 random y positions across the full screen height. If every
+  // attempt lands in the predicted safe zone, falls back to a rebound zone
+  // where the safe zone never reaches.
+  private yAvoidingSafeZone(radius: number, safeZone: SafeZone, travelTime: number): number {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const y = radius + Math.random() * (CANVAS_HEIGHT - radius * 2);
+      if (!safeZone.predictedOverlaps(y, radius, travelTime)) return y;
+    }
+    return Math.random() < 0.5
+      ? this.yInUpperReboundZone(radius)
+      : this.yInLowerReboundZone(radius);
   }
 }

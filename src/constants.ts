@@ -76,13 +76,18 @@ export const REBOUND_SPEED = 80;           // pixels/sec push at the very edge (
 // player a navigable corridor through the field at all times.
 export const SAFE_ZONE_FRACTION = 0.3;      // zone height as fraction of canvas height
 export const SAFE_ZONE_SPEED = 20;           // pixels/sec the zone centre travels
-export const SAFE_ZONE_FLIP_CHANCE = 0.1;   // probability of random direction flip per check interval
-export const SAFE_ZONE_FLIP_INTERVAL = 1;   // seconds between random flip checks
+export const SAFE_ZONE_FLIP_MIN = 1;   // seconds — minimum time between random direction flips
+export const SAFE_ZONE_FLIP_MAX = 20;  // seconds — maximum time between random direction flips
 
 // Asteroids
-export const ASTEROID_SPEED_BASE = 100;     // pixels/sec
+// At t=0 speed is uniformly random in [ASTEROID_SPEED_BASE ± ASTEROID_SPEED_RANGE/2].
+// The whole distribution is multiplied by a factor that ramps from 1.0 to
+// ASTEROID_SPEED_MAX_FACTOR over ASTEROID_SPEED_CAP_TIME seconds, then holds.
+export const ASTEROID_SPEED_BASE = 90;      // pixels/sec (midpoint of starting range)
 // Per-asteroid speed jitter prevents the field from feeling like a conveyor belt.
-export const ASTEROID_SPEED_RANGE = 80;     // randomness +/-
+export const ASTEROID_SPEED_RANGE = 60;     // randomness +/-, so starting range is [60, 120]
+export const ASTEROID_SPEED_MAX_FACTOR = 2.0; // factor cap (doubles the range to [120, 240])
+export const ASTEROID_SPEED_CAP_TIME = 100; // seconds until max factor is reached
 export const ASTEROID_RADIUS_MIN = 20;
 export const ASTEROID_RADIUS_MAX = 70;
 export const ASTEROID_ROTATION_MAX = 2.5;   // max rotation speed half-range (rad/sec); actual = random(-max, max)
@@ -106,8 +111,7 @@ export const VOL_MUSIC       = 0.3;  // background soundtrack
 export const VOL_RAMP_RATE   = 0.6;  // max volume change per second 
 
 // Difficulty ramp
-// Steps are time-based rather than score-based so difficulty is predictable
-// to the designer and independent of any lucky dodges or unlucky clusters.
-export const DIFFICULTY_RAMP_INTERVAL = 10000; // ms between difficulty steps
-export const SPEED_INCREASE_PER_STEP = 20;     // pixels/sec added per step
-export const INTERVAL_DECREASE_PER_STEP = 80;  // ms removed per step
+// Speed uses a continuous time factor (see ASTEROID_SPEED_MAX_FACTOR / CAP_TIME above).
+// Spawn rate decreases continuously at SPAWN_RAMP_RATE ms/sec, uncapped beyond 100 s,
+// so the field keeps getting denser long after speed has plateaued.
+export const SPAWN_RAMP_RATE = 12; // ms/sec reduction in spawn interval (hits floor at ~217 s)

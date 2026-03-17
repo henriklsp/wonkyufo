@@ -3,11 +3,12 @@ import { Asteroid } from './asteroid';
 import { Spawner } from './spawner';
 import { SafeZone } from './safezone';
 import { Renderer, Star } from './renderer';
+import { DebugRenderer } from './debugrenderer';
 import { AudioManager } from './audio';
 import {
   CANVAS_WIDTH, CANVAS_HEIGHT, UFO_COLLISION_RADIUS,
   STAR_COUNT, STAR_RADIUS_MIN, STAR_RADIUS_RANGE, STAR_SPEED_MIN, STAR_SPEED_RANGE,
-  SCORE_PER_SECOND, MAX_FRAME_DT,
+  SCORE_PER_SECOND, MAX_FRAME_DT, DEBUG_MODE,
 } from './constants';
 
 type GameState = 'title' | 'playing' | 'dead';
@@ -24,6 +25,7 @@ export class Game {
   private spawner: Spawner;
   private safeZone: SafeZone;
   private renderer: Renderer;
+  private debugRenderer: DebugRenderer | null;
   private audio: AudioManager;
   private spaceHeld = false;
   private lastTime: number | null = null;
@@ -38,6 +40,7 @@ export class Game {
   constructor(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d')!;
     this.renderer = new Renderer(ctx);
+    this.debugRenderer = DEBUG_MODE ? new DebugRenderer(ctx) : null;
     this.audio = new AudioManager();
     this.ufo = new UFO();
     this.spawner = new Spawner();
@@ -214,5 +217,7 @@ export class Game {
       this.renderer.drawUfo(this.ufo);
       this.renderer.drawDead(this.score);
     }
+
+    if (this.debugRenderer) this.debugRenderer.draw(this.ufo, this.safeZone);
   }
 }

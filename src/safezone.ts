@@ -63,26 +63,47 @@ export class SafeZone {
   }
 
   // Predicts where the safe zone centre will be after travelTime seconds.
-  // If the scheduled random flip fires before arrival, the direction is
-  // inverted from that point onward. Boundary clamp prevents the result from
-  // landing outside the rebound zone.
+  // Steps through events in time order: boundary bounce (deterministic),
+  // the one known scheduled flip, then repeats until travel time is consumed.
+  // After the scheduled flip fires we can no longer predict future flip times,
+  // but boundary bounces are still simulated accurately for the remainder.
   predictCenter(travelTime: number): number {
     const minCenter = CANVAS_HEIGHT * REBOUND_ZONE_FRACTION;
     const maxCenter = CANVAS_HEIGHT * (1 - REBOUND_ZONE_FRACTION);
 
+    let pos = this.center;
     let dir = this.direction;
-    let predicted: number;
+    let remaining = travelTime;
+    let flipIn = this.nextFlipIn;
+    let flipUsed = false;
 
-    if (this.nextFlipIn < travelTime) {
-      // Zone travels in current direction up to the flip, then reverses.
-      predicted = this.center + dir * SAFE_ZONE_SPEED * this.nextFlipIn;
-      dir *= -1;
-      predicted += dir * SAFE_ZONE_SPEED * (travelTime - this.nextFlipIn);
-    } else {
-      predicted = this.center + dir * SAFE_ZONE_SPEED * travelTime;
+    while (remaining > 0) {
+      const timeToBoundary = dir > 0
+        ? (maxCenter - pos) / SAFE_ZONE_SPEED
+        : (pos - minCenter) / SAFE_ZONE_SPEED;
+      const timeToFlip = flipUsed ? Infinity : flipIn;
+
+      if (remaining <= timeToBoundary && remaining <= timeToFlip) {
+        // Travel time runs out before any event — we're done.
+        pos += dir * SAFE_ZONE_SPEED * remaining;
+        break;
+      } else if (timeToBoundary <= timeToFlip) {
+        // Boundary hit comes first (or ties with flip — bounce wins).
+        pos = dir > 0 ? maxCenter : minCenter;
+        dir *= -1;
+        remaining -= timeToBoundary;
+        flipIn -= timeToBoundary;
+      } else {
+        // Scheduled flip comes first.
+        pos += dir * SAFE_ZONE_SPEED * timeToFlip;
+        dir *= -1;
+        flipUsed = true;
+        remaining -= timeToFlip;
+        flipIn = 0;
+      }
     }
 
-    return Math.max(minCenter, Math.min(maxCenter, predicted));
+    return Math.max(minCenter, Math.min(maxCenter, pos));
   }
 
   // True when a circle at (y, radius) overlaps the safe zone band at its

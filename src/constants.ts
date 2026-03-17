@@ -1,3 +1,5 @@
+export const DEBUG_MODE = false;
+
 // Canvas dimensions define the logical coordinate space. All physics values are
 // expressed in these units (pixels), so changing these would require rescaling
 // constants too. The 2:1 ratio gives a wide field of view for incoming asteroids.
@@ -30,10 +32,10 @@ export const MAX_SNAP = 50;           // pixels/sec⁴
 export const MIN_SNAP = -100;           // pixels/sec⁴
 export const MAX_CRACKLE = 25;        // pixels/sec⁵
 export const MIN_CRACKLE = -50;       // pixels/sec⁵
-export const MAX_POP = 10000;           // pixels/sec⁶
+export const MAX_POP = 1000;           // pixels/sec⁶
 export const MIN_POP = -40;         // pixels/sec⁶
 // Rate at which a derivative smoothly returns toward its limit when outside bounds.
-export const D_CLAMP_SPEED = 1000;     // units/sec (shared across all derivative orders)
+export const D_CLAMP_SPEED = 200;     // units/sec (shared across all derivative orders)
 
 // Exhaust flicker/pulse rates driven by jerk (Hz).
 // Frequency linearly interpolates from JERK_PULSE_MIN_HZ at MIN_JERK to JERK_PULSE_MAX_HZ at MAX_JERK.
@@ -62,7 +64,7 @@ export const RIM_LIGHT_VALUE_MIN = 0.5;        // HSV value at minimum crackle (
 // The UFO collision radius is slightly smaller than its visual art to give the
 // player a touch of forgiveness on near misses.
 export const UFO_RADIUS = 32;
-export const UFO_COLLISION_RADIUS = 22;
+export const UFO_COLLISION_RADIUS = 21;
 // Keeping the UFO in the left quarter lets the player see far ahead while
 // still having room to react.
 export const UFO_X_FRACTION = 0.05;   // UFO fixed x as fraction of canvas width
@@ -75,7 +77,7 @@ export const REBOUND_SPEED = 80;           // pixels/sec push at the very edge (
 // Safe zone: a moving band guaranteed to be free of asteroids, giving the
 // player a navigable corridor through the field at all times.
 export const SAFE_ZONE_FRACTION = 0.3;      // zone height as fraction of canvas height
-export const SAFE_ZONE_SPEED = 20;           // pixels/sec the zone centre travels
+export const SAFE_ZONE_SPEED = 30;           // pixels/sec the zone centre travels
 export const SAFE_ZONE_FLIP_MIN = 1;   // seconds — minimum time between random direction flips
 export const SAFE_ZONE_FLIP_MAX = 20;  // seconds — maximum time between random direction flips
 

@@ -13,8 +13,6 @@ import {
   SPAWN_INTERVAL_RANGE,
   SPAWN_RAMP_RATE,
   MIN_SPAWN_INTERVAL,
-  SAFE_ZONE_FRACTION,
-  REBOUND_ZONE_FRACTION,
   REBOUND_ZONE_SPAWN_CHANCE,
 } from './constants';
 
@@ -86,9 +84,9 @@ export class Spawner {
     const roll = Math.random();
     let y: number;
     if (roll < REBOUND_ZONE_SPAWN_CHANCE) {
-      y = this.yInUpperReboundZone(radius);
+      y = this.yAtTopEdge(radius);
     } else if (roll < REBOUND_ZONE_SPAWN_CHANCE * 2) {
-      y = this.yInLowerReboundZone(radius);
+      y = this.yAtBottomEdge(radius);
     } else {
       y = this.yAvoidingSafeZone(radius, safeZone, travelTime);
     }
@@ -96,26 +94,25 @@ export class Spawner {
     return new Asteroid(x, y, radius, -speed);
   }
 
-  private yInUpperReboundZone(radius: number): number {
-    const zoneDepth = REBOUND_ZONE_FRACTION * CANVAS_HEIGHT;
-    return radius + Math.random() * (zoneDepth - radius);
+  // Spawns the asteroid centre just inside or outside the top/bottom screen
+  // edge by up to one radius, so it enters partially clipped by the screen boundary.
+  private yAtTopEdge(radius: number): number {
+    return (Math.random() * 2 - 1) * radius;
   }
 
-  private yInLowerReboundZone(radius: number): number {
-    const zoneDepth = REBOUND_ZONE_FRACTION * CANVAS_HEIGHT;
-    return (CANVAS_HEIGHT - zoneDepth) + Math.random() * (zoneDepth - radius);
+  private yAtBottomEdge(radius: number): number {
+    return CANVAS_HEIGHT + (Math.random() * 2 - 1) * radius;
   }
 
   // Tries up to 3 random y positions across the full screen height. If every
-  // attempt lands in the predicted safe zone, falls back to a rebound zone
-  // where the safe zone never reaches.
+  // attempt lands in the predicted safe zone, falls back to a screen edge.
   private yAvoidingSafeZone(radius: number, safeZone: SafeZone, travelTime: number): number {
     for (let attempt = 0; attempt < 3; attempt++) {
       const y = radius + Math.random() * (CANVAS_HEIGHT - radius * 2);
       if (!safeZone.predictedOverlaps(y, radius, travelTime)) return y;
     }
     return Math.random() < 0.5
-      ? this.yInUpperReboundZone(radius)
-      : this.yInLowerReboundZone(radius);
+      ? this.yAtTopEdge(radius)
+      : this.yAtBottomEdge(radius);
   }
 }

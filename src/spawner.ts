@@ -13,6 +13,8 @@ import {
   SPAWN_INTERVAL_RANGE,
   SPAWN_RAMP_RATE,
   MIN_SPAWN_INTERVAL,
+  ASTEROID_WAVE_INTERVAL,
+  ASTEROID_WAVE_COUNT,
   REBOUND_ZONE_SPAWN_CHANCE,
 } from './constants';
 
@@ -25,6 +27,7 @@ export class Spawner {
   private timer: number = 0;
   private nextSpawn: number;
   private elapsed: number = 0; // total seconds since game start
+  private waveTimer: number = ASTEROID_WAVE_INTERVAL;
 
   constructor() {
     this.nextSpawn = this.randomInterval();
@@ -36,6 +39,7 @@ export class Spawner {
     this.timer = 0;
     this.elapsed = 0;
     this.nextSpawn = this.randomInterval();
+    this.waveTimer = ASTEROID_WAVE_INTERVAL;
   }
 
   // Advances timers and returns any asteroids that should be added to the
@@ -53,6 +57,15 @@ export class Spawner {
       this.nextSpawn = this.randomInterval();
       spawned.push(this.spawnOne(safeZone));
     }
+
+    this.waveTimer -= dt;
+    if (this.waveTimer <= 0) {
+      this.waveTimer = ASTEROID_WAVE_INTERVAL;
+      for (let i = 0; i < ASTEROID_WAVE_COUNT; i++) {
+        spawned.push(this.spawnOne(safeZone, Math.random() * CANVAS_WIDTH));
+      }
+    }
+
     return spawned;
   }
 
@@ -65,21 +78,22 @@ export class Spawner {
     return Math.max(MIN_SPAWN_INTERVAL, baseMs + jitter) / 1000; // convert to seconds to match dt units
   }
 
-  // Constructs one asteroid at a random height along the right edge. Placing it
-  // at x = canvasWidth + radius means it enters from fully off-screen, so the
-  // player gets a brief preview as it slides in rather than a sudden pop-in.
-  private spawnOne(safeZone: SafeZone): Asteroid {
+  // Constructs one asteroid at a random height along the right edge. xOffset
+  // pushes the spawn point further right, staggering wave asteroids across a
+  // belt so they arrive spread out rather than all at once. travelTime uses
+  // the actual spawn x so safe zone prediction is accurate for both cases.
+  private spawnOne(safeZone: SafeZone, xOffset: number = 0): Asteroid {
     const radius =
       ASTEROID_RADIUS_MIN +
       Math.random() * (ASTEROID_RADIUS_MAX - ASTEROID_RADIUS_MIN);
-    const x = CANVAS_WIDTH + radius;
+    const x = CANVAS_WIDTH + radius + xOffset;
 
     const speedFactor = Math.min(
       1 + this.elapsed * (ASTEROID_SPEED_MAX_FACTOR - 1) / ASTEROID_SPEED_CAP_TIME,
       ASTEROID_SPEED_MAX_FACTOR
     );
     const speed = speedFactor * (ASTEROID_SPEED_BASE + (Math.random() - 0.5) * ASTEROID_SPEED_RANGE);
-    const travelTime = CANVAS_WIDTH / speed;
+    const travelTime = x / speed;
 
     const roll = Math.random();
     let y: number;

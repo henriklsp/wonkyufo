@@ -96,11 +96,19 @@ export const ASTEROID_ROTATION_MAX = 2.5;   // max rotation speed half-range (ra
 
 // Spawning
 export const REBOUND_ZONE_SPAWN_CHANCE = 0.15; // probability that an asteroid spawns in each rebound zone
-export const SPAWN_INTERVAL_BASE = 3000;  // ms between spawns
+export const SPAWN_INTERVAL_BASE = 4000;  // ms between spawns
 // Interval jitter breaks up rhythmic patterns the player could memorize.
-export const SPAWN_INTERVAL_RANGE = 600;  // randomness +/- ms
+export const SPAWN_INTERVAL_RANGE = 1000;  // randomness +/- ms
 // Floor prevents the game from becoming literally impossible at high difficulty.
-export const MIN_SPAWN_INTERVAL = 400;    // ms floor
+export const MIN_SPAWN_INTERVAL = 500;    // ms floor
+export const ASTEROID_WAVE_INTERVAL = 60; // seconds between waves
+export const ASTEROID_WAVE_COUNT = 8;     // extra asteroids per wave
+// Difficulty ramp
+// Speed uses a continuous time factor (see ASTEROID_SPEED_MAX_FACTOR / CAP_TIME above).
+// Spawn rate decreases continuously at SPAWN_RAMP_RATE ms/sec, uncapped beyond 100 s,
+// so the field keeps getting denser long after speed has plateaued.
+export const SPAWN_RAMP_RATE = 12; // ms/sec reduction in spawn interval 
+
 
 // Audio volumes (0..1)
 export const VOL_JET_EXHAUST = 0.2;  // accelerate
@@ -111,9 +119,3 @@ export const VOL_GAME_OVER   = 0.8;  // game over sting
 export const VOL_TITLE_MUSIC = 0.3;  // title screen track
 export const VOL_MUSIC       = 0.3;  // background soundtrack
 export const VOL_RAMP_RATE   = 0.6;  // max volume change per second 
-
-// Difficulty ramp
-// Speed uses a continuous time factor (see ASTEROID_SPEED_MAX_FACTOR / CAP_TIME above).
-// Spawn rate decreases continuously at SPAWN_RAMP_RATE ms/sec, uncapped beyond 100 s,
-// so the field keeps getting denser long after speed has plateaued.
-export const SPAWN_RAMP_RATE = 12; // ms/sec reduction in spawn interval (hits floor at ~217 s)

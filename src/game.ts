@@ -11,15 +11,15 @@ import {
   SCORE_PER_SECOND, MAX_FRAME_DT, DEBUG_MODE,
 } from './constants';
 
-type GameState = 'title' | 'playing' | 'dead';
+type GameState = 'loaded' | 'title' | 'playing' | 'dead';
 
 // Game is the top-level orchestrator. It owns the animation loop, input state,
-// all game objects, and the state machine that transitions between title,
-// playing, and dead screens. Keeping all of this in one class avoids the need
+// all game objects, and the state machine that transitions between loaded,
+// title, playing, and dead screens. Keeping all of this in one class avoids the need
 // for a shared event bus or global state while the game is small enough that
 // a single coordinator is readable.
 export class Game {
-  private state: GameState = 'title';
+  private state: GameState = 'loaded';
   private ufo: UFO;
   private asteroids: Asteroid[] = [];
   private spawner: Spawner;
@@ -46,12 +46,12 @@ export class Game {
     this.spawner = new Spawner();
     this.safeZone = new SafeZone();
 
-    canvas.addEventListener('mouseenter', () => {
-      if (this.state === 'title') this.audio.playTitleMusic();
-    });
     canvas.addEventListener('pointerdown', () => {
-      if (this.state === 'title') this.audio.playTitleMusic();
+      this.audio.unlock();
+      this.onUserInput();
     });
+    window.addEventListener('pointerup', () => { this.spaceHeld = false; });
+    window.addEventListener('pointercancel', () => { this.spaceHeld = false; });
 
     // Varying radius and speed creates a parallax-like depth effect: small,
     // slow stars read as distant; larger, faster ones as close.
@@ -65,7 +65,7 @@ export class Game {
     }
 
     // keydown fires repeatedly when held, so the !spaceHeld guard prevents
-    // startGame being called on every repeated keydown event after the first.
+    // onUserInput being called on every repeated keydown event after the first.
     const muteBtn = document.getElementById('mute-btn') as HTMLButtonElement;
     muteBtn.addEventListener('click', () => {
       const muted = this.audio.toggleMute();
@@ -74,22 +74,15 @@ export class Game {
     });
 
     window.addEventListener('keydown', (e) => {
-      if (e.code !== 'Space' && this.state === 'title') {
-        this.audio.playTitleMusic();
-      }
-      if (e.code === 'Space') {
-        e.preventDefault();
-        if (!this.spaceHeld) {
-          this.spaceHeld = true;
-          this.audio.unlock();
-          if (this.state === 'title' || this.state === 'dead') this.startGame();
-        }
+      if (e.code === 'Space') e.preventDefault();
+      if (!this.spaceHeld) {
+        this.spaceHeld = true;
+        this.audio.unlock();
+        this.onUserInput();
       }
     });
 
-    window.addEventListener('keyup', (e) => {
-      if (e.code === 'Space') this.spaceHeld = false;
-    });
+    window.addEventListener('keyup', () => { this.spaceHeld = false; });
 
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.audio.suspend();
@@ -103,6 +96,27 @@ export class Game {
     await this.renderer.loadAssets();
     await this.audio.loadAssets();
     requestAnimationFrame((t) => this.loop(t));
+  }
+
+  // Transitions from loaded to title: unlocks audio and starts title music.
+  private setTitleReady(): void {
+    this.state = 'title';
+    this.audio.unlock();
+    this.audio.playTitleMusic();
+  }
+
+  // Single entry point for all "press / tap / click" input events.
+  // Centralising here means keydown, pointerdown, and any future input source
+  // all share identical state-machine logic without duplication.
+  private onUserInput(): void {
+    if (this.state === 'loaded') {
+      this.setTitleReady();
+    } else if (this.state === 'title' || this.state === 'dead') {
+      this.startGame();
+      this.spaceHeld = true;
+    } else if (this.state === 'playing') {
+      this.spaceHeld = true;
+    }
   }
 
   // Transitions to playing state and wipes all per-run data. Called both on
@@ -137,7 +151,7 @@ export class Game {
   }
 
   // Advances all simulation state for the frame. Stars scroll on every state
-  // so the background stays alive on the title and dead screens. Everything
+  // so the background stays alive on the loaded, title, and dead screens. Everything
   // else is gated on the playing state — checking early prevents subtle bugs
   // where a collision check runs against stale asteroid positions.
   private update(dt: number) {
@@ -202,8 +216,8 @@ export class Game {
     this.renderer.drawBackground();
     this.renderer.drawStars(this.stars);
 
-    if (this.state === 'title') {
-      this.renderer.drawTitle();
+    if (this.state === 'loaded' || this.state === 'title') {
+      this.renderer.drawTitle(this.state === 'title');
     } else if (this.state === 'playing') {
       this.renderer.drawExhaust(this.ufo);
       for (const a of this.asteroids) this.renderer.drawAsteroid(a);

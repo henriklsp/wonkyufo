@@ -53,6 +53,7 @@ function hsvToRgb(h: number, s: number, v: number): string {
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private ufoImage: HTMLImageElement | null = null;
+  private titleImage: HTMLImageElement | null = null;
   private asteroidImages: (HTMLImageElement | null)[] = [null, null];
   private exhaustImage: HTMLImageElement | null = null;
   private exhaustLowImage: HTMLImageElement | null = null;
@@ -76,8 +77,9 @@ export class Renderer {
   async loadAssets(): Promise<void> {
     const tryLoad = (src: string) => loadImage(src).catch(() => null);
     const base = import.meta.env.BASE_URL;
-    [this.ufoImage, this.asteroidImages[0], this.asteroidImages[1], this.exhaustImage, this.exhaustLowImage, this.engineGlowImage] = await Promise.all([
+    [this.ufoImage, this.titleImage, this.asteroidImages[0], this.asteroidImages[1], this.exhaustImage, this.exhaustLowImage, this.engineGlowImage] = await Promise.all([
       tryLoad(`${base}assets/ufo.png`),
+      tryLoad(`${base}assets/WonkyUFOTitle.png`),
       tryLoad(`${base}assets/asteroid1.png`),
       tryLoad(`${base}assets/asteroid2.png`),
       tryLoad(`${base}assets/exhaust.png`),
@@ -258,37 +260,36 @@ export class Renderer {
     ctx.fillText(`SCORE: ${score}`, CANVAS_WIDTH - 10, 10);
   }
 
-  // Draws the attract screen. A demo UFO sprite is shown above the title text
-  // so the player immediately sees the thing they are controlling before
-  // pressing space — communicating the game object without instructions.
-  drawTitle(): void {
+  // Draws the attract screen. In loaded state (titleReady=false) shows the logo
+  // only. In title state (titleReady=true) adds the demo UFO and control hint.
+  drawTitle(titleReady: boolean): void {
     const ctx = this.ctx;
     const cx = CANVAS_WIDTH / 2;
-    const cy = CANVAS_HEIGHT / 2;
 
     // Construct a minimal stand-in UFO just to supply the position and radius
     // that drawUfo needs. Its physics state is irrelevant here.
-    const demoUfo = new UFO();
-    demoUfo.d[D_POS] = CANVAS_HEIGHT / 4;
-    this.drawUfo(demoUfo);
+    if (titleReady) {
+      const demoUfo = new UFO();
+      demoUfo.d[D_POS] = CANVAS_HEIGHT / 4;
+      this.drawUfo(demoUfo);
+    }
 
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    if (this.titleImage) {
+      const maxW = 800, maxH = 300;
+      const scale = Math.min(maxW / this.titleImage.naturalWidth, maxH / this.titleImage.naturalHeight);
+      const w = this.titleImage.naturalWidth * scale;
+      const h = this.titleImage.naturalHeight * scale;
+      const logoY = CANVAS_HEIGHT / 4;
+      ctx.drawImage(this.titleImage, cx - w / 2, logoY, w, h);
 
-    ctx.font = 'bold 62px monospace';
-    ctx.fillStyle = 'rgba(0,100,200,0.4)';
-    ctx.fillText('WONKY UFO', cx + 3, cy - 43);
-
-    ctx.fillStyle = '#4af';
-    ctx.fillText('WONKY UFO', cx, cy - 46);
-
-    ctx.font = '18px monospace';
-    ctx.fillStyle = '#9df';
-    ctx.fillText('Press SPACE to launch', cx, cy + 20);
-
-    ctx.font = '13px monospace';
-    ctx.fillStyle = '#467';
-    ctx.fillText('Hold SPACE to pop thruster acceleration', cx, cy + 58);
+      if (titleReady) {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '13px monospace';
+        ctx.fillStyle = '#467';
+        ctx.fillText('Hold any key to pop thruster acceleration', cx, logoY + h + 40);
+      }
+    }
   }
 
   // The dead screen keeps the final game frame visible underneath a
@@ -318,6 +319,6 @@ export class Renderer {
 
     ctx.font = '16px monospace';
     ctx.fillStyle = '#9df';
-    ctx.fillText('Press SPACE to play again', cx, cy + 52);
+    ctx.fillText('Tap or press any key to play again', cx, cy + 52);
   }
 }

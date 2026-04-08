@@ -54,7 +54,7 @@ export const ENGINE_GLOW_Y = -45;
 export const CRACKLE_FREQUENCY = 7;  // Hz
 
 // Rim lights on the UFO hull encode the pop/crackle state via HSV colour.
-export const RIM_LIGHT_Y_FRACTION = 0.22;      // light centre Y offset as fraction of UFO radius (below centre)
+export const RIM_LIGHT_Y_FRACTION = 0.35;      // light centre Y offset as fraction of UFO radius (below centre)
 export const RIM_LIGHT_RADIUS_FRACTION = 0.05; // light dot radius as fraction of UFO radius
 export const RIM_LIGHT_X_SPREAD = 0.85;        // X spread of outer lights as fraction of UFO radius
 export const RIM_LIGHT_X_OFFSETS = [-0.65, 0, 0.65] as const; // relative X positions of the three lights
@@ -66,7 +66,7 @@ export const UFO_RADIUS = 40;
 export const UFO_COLLISION_RADIUS = 26;
 // Keeping the UFO in the left quarter lets the player see far ahead while
 // still having room to react.
-export const UFO_X_FRACTION = 0.04;   // UFO fixed x as fraction of canvas width
+export const UFO_X_FRACTION = 0.05;   // UFO fixed x as fraction of canvas width
 
 // Rebound zone: a band at the top and bottom of the screen that nudges the
 // UFO's position toward centre. Does not touch the physics chain (jerk/accel).
@@ -108,6 +108,10 @@ export const ASTEROID_WAVE_COUNT = 7;     // extra asteroids per wave
 // so the field keeps getting denser long after speed has plateaued.
 export const SPAWN_RAMP_RATE = 11; // ms/sec reduction in spawn interval 
 
+
+// Exhaust push: asteroids directly below the UFO are nudged downward by the exhaust.
+// Force scales with engine acceleration and falls off with horizontal and vertical distance.
+export const EXHAUST_PUSH_SPEED = 300;  // max pixels/sec displacement (centered, full accel)
 
 // Audio volumes (0..1)
 export const VOL_JET_EXHAUST = 0.2;  // accelerate

@@ -6,9 +6,9 @@ import { Renderer, Star } from './renderer';
 import { DebugRenderer } from './debugrenderer';
 import { AudioManager } from './audio';
 import {
-  CANVAS_WIDTH, CANVAS_HEIGHT, UFO_COLLISION_RADIUS,
+  CANVAS_WIDTH, CANVAS_HEIGHT, UFO_COLLISION_RADIUS, UFO_RADIUS,
   STAR_COUNT, STAR_RADIUS_MIN, STAR_RADIUS_RANGE, STAR_SPEED_MIN, STAR_SPEED_RANGE,
-  SCORE_PER_SECOND, MAX_FRAME_DT, DEBUG_MODE,
+  SCORE_PER_SECOND, MAX_FRAME_DT, DEBUG_MODE, MAX_ENGINE_ACCEL, EXHAUST_PUSH_SPEED,
 } from './constants';
 
 type GameState = 'loaded' | 'title' | 'playing' | 'dead';
@@ -178,6 +178,24 @@ export class Game {
     for (const a of this.asteroids) a.update(dt);
     // Filter in one pass rather than splicing during iteration.
     this.asteroids = this.asteroids.filter((a) => !a.isDead());
+
+    // Exhaust push: nudge asteroids downward when they are inside the exhaust cone.
+    const accelFactor = this.ufo.d[D_ACCEL] / MAX_ENGINE_ACCEL;
+    if (accelFactor > 0) {
+      const ufoY = this.ufo.d[D_POS];
+      for (const a of this.asteroids) {
+        const vertDist = a.y - ufoY;
+        const maxVert = UFO_RADIUS * 4 + a.radius;
+        if (vertDist <= 0 || vertDist >= maxVert) continue;
+        const horizDist = Math.abs(a.x - this.ufo.x);
+        const maxHoriz = UFO_RADIUS + a.radius;
+        if (horizDist >= maxHoriz) continue;
+        const horizFactor = 1 - horizDist / maxHoriz;
+        const vertFactor  = 1 - vertDist  / maxVert;
+		const sizeFactor = 100 / (100 + a.radius);
+        a.y += EXHAUST_PUSH_SPEED * accelFactor * horizFactor * vertFactor * sizeFactor * dt;
+      }
+    }
 
     // Score is time-survival based: 10 points per second, floored so it
     // reads as whole numbers rather than decimals.

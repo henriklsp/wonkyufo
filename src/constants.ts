@@ -28,12 +28,12 @@ export const MAX_ENGINE_ACCEL = 80;    // pixels/sec²  (max upward thrust)
 export const MIN_ENGINE_ACCEL = 0;     // pixels/sec²  (min upward thrust — 0 means thrusters only push up or turn off)
 export const MAX_JERK = 100;            // pixels/sec³
 export const MIN_JERK = -100;           // pixels/sec³
-export const MAX_SNAP = 50;           // pixels/sec⁴
+export const MAX_SNAP = 40;           // pixels/sec⁴
 export const MIN_SNAP = -100;           // pixels/sec⁴
-export const MAX_CRACKLE = 25;        // pixels/sec⁵
+export const MAX_CRACKLE = 20;        // pixels/sec⁵
 export const MIN_CRACKLE = -50;       // pixels/sec⁵
 export const MAX_POP = 1000;           // pixels/sec⁶
-export const MIN_POP = -40;         // pixels/sec⁶
+export const MIN_POP = -30;         // pixels/sec⁶
 // Rate at which a derivative smoothly returns toward its limit when outside bounds.
 export const D_CLAMP_SPEED = 200;     // units/sec (shared across all derivative orders)
 
@@ -48,8 +48,7 @@ export const ACCEL_EXHAUST_MIN = 5;    // px — exhaust height at zero accelera
 export const EXHAUST_Y_OFFSET = 17;    // px
 // ENGINE_GLOW_Y: absolute Y offset of the glow image top-left from the UFO image
 // top-left, where negative = lower on screen. Formula: glowTop = (y − r) − ENGINE_GLOW_Y.
-// At −45 with UFO_RADIUS=25: glowTop = y+20, glow bottom = y+70, UFO bottom = y+25 → 5 px overlap.
-export const ENGINE_GLOW_Y = -35;
+export const ENGINE_GLOW_Y = -45;
 // When crackle is positive the engine glow flashes at CRACKLE_FREQUENCY Hz.
 // Each cycle: 10% at alpha=1, 10% at alpha=0, 80% at snap-driven alpha.
 export const CRACKLE_FREQUENCY = 7;  // Hz
@@ -63,21 +62,21 @@ export const RIM_LIGHT_VALUE_MIN = 0.5;        // HSV value at minimum crackle (
 
 // The UFO collision radius is slightly smaller than its visual art to give the
 // player a touch of forgiveness on near misses.
-export const UFO_RADIUS = 32;
-export const UFO_COLLISION_RADIUS = 21;
+export const UFO_RADIUS = 40;
+export const UFO_COLLISION_RADIUS = 26;
 // Keeping the UFO in the left quarter lets the player see far ahead while
 // still having room to react.
-export const UFO_X_FRACTION = 0.05;   // UFO fixed x as fraction of canvas width
+export const UFO_X_FRACTION = 0.04;   // UFO fixed x as fraction of canvas width
 
 // Rebound zone: a band at the top and bottom of the screen that nudges the
 // UFO's position toward centre. Does not touch the physics chain (jerk/accel).
 export const REBOUND_ZONE_FRACTION = 0.1;  // zone depth as fraction of canvas height
-export const REBOUND_SPEED = 80;           // pixels/sec push at the very edge (falls to 0 at zone boundary)
+export const REBOUND_SPEED = 95;           // pixels/sec push at the very edge (falls to 0 at zone boundary)
 
 // Safe zone: a moving band guaranteed to be free of asteroids, giving the
 // player a navigable corridor through the field at all times.
 export const SAFE_ZONE_FRACTION = 0.3;      // zone height as fraction of canvas height
-export const SAFE_ZONE_SPEED = 30;           // pixels/sec the zone centre travels
+export const SAFE_ZONE_SPEED = 25;           // pixels/sec the zone centre travels
 export const SAFE_ZONE_FLIP_MIN = 1;   // seconds — minimum time between random direction flips
 export const SAFE_ZONE_FLIP_MAX = 20;  // seconds — maximum time between random direction flips
 
@@ -90,24 +89,24 @@ export const ASTEROID_SPEED_BASE = 90;      // pixels/sec (midpoint of starting 
 export const ASTEROID_SPEED_RANGE = 60;     // randomness +/-, so starting range is [60, 120]
 export const ASTEROID_SPEED_MAX_FACTOR = 2.0; // factor cap (doubles the range to [120, 240])
 export const ASTEROID_SPEED_CAP_TIME = 100; // seconds until max factor is reached
-export const ASTEROID_RADIUS_MIN = 20;
+export const ASTEROID_RADIUS_MIN = 25;
 export const ASTEROID_RADIUS_MAX = 70;
 export const ASTEROID_ROTATION_MAX = 2.5;   // max rotation speed half-range (rad/sec); actual = random(-max, max)
 
 // Spawning
-export const REBOUND_ZONE_SPAWN_CHANCE = 0.15; // probability that an asteroid spawns in each rebound zone
-export const SPAWN_INTERVAL_BASE = 4000;  // ms between spawns
+export const REBOUND_ZONE_SPAWN_CHANCE = 0.18; // probability that an asteroid spawns in each rebound zone
+export const SPAWN_INTERVAL_BASE = 5000;  // ms between spawns
 // Interval jitter breaks up rhythmic patterns the player could memorize.
-export const SPAWN_INTERVAL_RANGE = 1000;  // randomness +/- ms
+export const SPAWN_INTERVAL_RANGE = 2000;  // randomness +/- ms
 // Floor prevents the game from becoming literally impossible at high difficulty.
 export const MIN_SPAWN_INTERVAL = 500;    // ms floor
-export const ASTEROID_WAVE_INTERVAL = 60; // seconds between waves
-export const ASTEROID_WAVE_COUNT = 8;     // extra asteroids per wave
+export const ASTEROID_WAVE_INTERVAL = 50; // seconds between waves
+export const ASTEROID_WAVE_COUNT = 7;     // extra asteroids per wave
 // Difficulty ramp
 // Speed uses a continuous time factor (see ASTEROID_SPEED_MAX_FACTOR / CAP_TIME above).
 // Spawn rate decreases continuously at SPAWN_RAMP_RATE ms/sec, uncapped beyond 100 s,
 // so the field keeps getting denser long after speed has plateaued.
-export const SPAWN_RAMP_RATE = 12; // ms/sec reduction in spawn interval 
+export const SPAWN_RAMP_RATE = 11; // ms/sec reduction in spawn interval 
 
 
 // Audio volumes (0..1)

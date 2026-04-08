@@ -58,6 +58,7 @@ export class Renderer {
   private exhaustImage: HTMLImageElement | null = null;
   private exhaustLowImage: HTMLImageElement | null = null;
   private engineGlowImage: HTMLImageElement | null = null;
+  private gameOverImage: HTMLImageElement | null = null;
   private time: number = 0;
 
   constructor(ctx: CanvasRenderingContext2D) {
@@ -77,7 +78,7 @@ export class Renderer {
   async loadAssets(): Promise<void> {
     const tryLoad = (src: string) => loadImage(src).catch(() => null);
     const base = import.meta.env.BASE_URL;
-    [this.ufoImage, this.titleImage, this.asteroidImages[0], this.asteroidImages[1], this.exhaustImage, this.exhaustLowImage, this.engineGlowImage] = await Promise.all([
+    [this.ufoImage, this.titleImage, this.asteroidImages[0], this.asteroidImages[1], this.exhaustImage, this.exhaustLowImage, this.engineGlowImage, this.gameOverImage] = await Promise.all([
       tryLoad(`${base}assets/ufo.png`),
       tryLoad(`${base}assets/WonkyUFOTitle.png`),
       tryLoad(`${base}assets/asteroid1.png`),
@@ -85,6 +86,7 @@ export class Renderer {
       tryLoad(`${base}assets/exhaust.png`),
       tryLoad(`${base}assets/exhaustlow.png`),
       tryLoad(`${base}assets/engineglow.png`),
+      tryLoad(`${base}assets/gameover.png`),
     ]);
   }
 
@@ -253,10 +255,10 @@ export class Renderer {
     const ctx = this.ctx;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'top';
-    ctx.font = 'bold 17px monospace';
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillText(`SCORE: ${score}`, CANVAS_WIDTH - 9, 11);
-    ctx.fillStyle = '#7cf';
+    ctx.font = 'bold 20px monospace';
+    ctx.fillStyle = '#707';
+    ctx.fillText(`SCORE: ${score}`, CANVAS_WIDTH - 7, 13);
+    ctx.fillStyle = '#3ef';
     ctx.fillText(`SCORE: ${score}`, CANVAS_WIDTH - 10, 10);
   }
 
@@ -283,11 +285,14 @@ export class Renderer {
       ctx.drawImage(this.titleImage, cx - w / 2, logoY, w, h);
 
       if (titleReady) {
+		const text = 'HOLD ANY KEY TO POP THRUSTER ACCELERATION';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.font = '13px monospace';
-        ctx.fillStyle = '#467';
-        ctx.fillText('Hold any key to pop thruster acceleration', cx, logoY + h + 40);
+        ctx.font = '30px monospace';
+        ctx.fillStyle = '#505';
+        ctx.fillText(text, cx+3, logoY + h + 83);
+		ctx.fillStyle = '#2dd';
+        ctx.fillText(text, cx, logoY + h + 80);
       }
     }
   }
@@ -306,19 +311,27 @@ export class Renderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    ctx.font = 'bold 58px monospace';
-    ctx.fillStyle = 'rgba(180,0,0,0.4)';
-    ctx.fillText('GAME OVER', cx + 3, cy - 48);
+    if (this.gameOverImage) {
+      const maxW = 800, maxH = 240;
+      const scale = Math.min(maxW / this.gameOverImage.naturalWidth, maxH / this.gameOverImage.naturalHeight);
+      const w = this.gameOverImage.naturalWidth * scale;
+      const h = this.gameOverImage.naturalHeight * scale;
+      ctx.drawImage(this.gameOverImage, cx - w / 2, cy - h, w, h);
+    }
 
-    ctx.fillStyle = '#f44';
-    ctx.fillText('GAME OVER', cx, cy - 50);
+    ctx.font = 'bold 60px monospace';
+    ctx.fillStyle = '#055';
+    ctx.fillText(`SCORE: ${score}`, cx+3, cy + CANVAS_HEIGHT/8+3);
+	ctx.fillStyle = '#0ff';
+    ctx.fillText(`SCORE: ${score}`, cx-1, cy + CANVAS_HEIGHT/8-1);
+	ctx.fillStyle = '#fff';
+    ctx.fillText(`SCORE: ${score}`, cx, cy + CANVAS_HEIGHT/8);
 
-    ctx.font = '22px monospace';
-    ctx.fillStyle = '#fff';
-    ctx.fillText(`Score: ${score}`, cx, cy + 10);
-
-    ctx.font = '16px monospace';
-    ctx.fillStyle = '#9df';
-    ctx.fillText('Tap or press any key to play again', cx, cy + 52);
+	const text = 'PRESS ANY KEY TO PLAY AGAIN';
+    ctx.font = '30px monospace';
+	ctx.fillStyle = '#505';
+    ctx.fillText(text, cx+3, cy + CANVAS_HEIGHT/4+3);
+	ctx.fillStyle = '#2dd';	
+    ctx.fillText(text, cx, cy + CANVAS_HEIGHT/4);
   }
 }

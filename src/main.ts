@@ -14,8 +14,10 @@ canvas.height = CANVAS_HEIGHT;
 // the canvas never overflows in either direction. Called on load and on every
 // resize event so the game remains properly centred if the window is resized.
 function resize() {
-  const scaleX = window.innerWidth / CANVAS_WIDTH;
-  const scaleY = window.innerHeight / CANVAS_HEIGHT;
+  const w = window.visualViewport?.width ?? window.innerWidth;
+  const h = window.visualViewport?.height ?? window.innerHeight;
+  const scaleX = w / CANVAS_WIDTH;
+  const scaleY = h / CANVAS_HEIGHT;
   const scale = Math.min(scaleX, scaleY);
   canvas.style.width = `${CANVAS_WIDTH * scale}px`;
   canvas.style.height = `${CANVAS_HEIGHT * scale}px`;
@@ -23,6 +25,7 @@ function resize() {
 
 resize();
 window.addEventListener('resize', resize);
+window.visualViewport?.addEventListener('resize', resize);
 
 // start() is async because it awaits image preloading before the first frame,
 // ensuring sprites are never drawn in a partially-loaded state.
